@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spider-Man Fan Website</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="logo">
+      <span class="logo-icon">🕷️</span>
+      <div>
+        <h1>Spider-Man</h1>
+        <p>Friendly neighborhood hero</p>
+      </div>
+    </div>
+    <div style="display: flex; gap: 1rem; align-items: center;">
+      <div id="userGreeting" style="color: var(--muted); font-size: 0.9rem;"></div>
+      <a href="/signup.html" class="theme-toggle" style="text-decoration: none; display: inline-block;">Sign Up</a>
+      <a href="/login.html" class="theme-toggle" style="text-decoration: none; display: inline-block;">Log In</a>
+      <button id="logoutBtnHeader" class="theme-toggle" style="display: none; cursor: pointer;">Logout</button>
+      <button id="themeToggle" class="theme-toggle">Dark Mode</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">New York City</p>
+        <h2>With great power comes great responsibility.</h2>
+        <p>Welcome to the official Spider-Man fan page. Discover Peter Parker, his powers, and his iconic adventures across the city skyline.</p>
+        <a href="#about" class="button">Explore the story</a>
+      </div>
+      <div class="hero-visual">
+        <div class="spider-silhouette"></div>
+      </div>
+    </section>
+
+    <section id="about" class="section about">
+      <div>
+        <h3>About Spider-Man</h3>
+        <p>Spider-Man is the alter ego of Peter Parker, a high school student turned superhero after being bitten by a radioactive spider.</p>
+      </div>
+      <div class="cards">
+        <article class="card">
+          <h4>Origin</h4>
+          <p>Peter Parker gained spider-like powers and learned what it means to protect others.</p>
+        </article>
+        <article class="card">
+          <h4>Powers</h4>
+          <p>Super strength, agility, spider-sense, and wall-crawling are among his amazing abilities.</p>
+        </article>
+        <article class="card">
+          <h4>Enemies</h4>
+          <p>From the Green Goblin to Doctor Octopus, Spider-Man faces some of the greatest villains in Marvel history.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section features">
+      <h3>Powers & Gear</h3>
+      <div class="feature-grid">
+        <div class="feature-item">
+          <h4>Spider-Sense</h4>
+          <p>Detects danger with a unique sixth sense.</p>
+        </div>
+        <div class="feature-item">
+          <h4>Web Shooters</h4>
+          <p>Custom-built devices that shoot web fluid for swinging and traps.</p>
+        </div>
+        <div class="feature-item">
+          <h4>Wall-Crawling</h4>
+          <p>Can cling to and scale vertical surfaces with ease.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section contact">
+      <div>
+        <h3>Join the City Patrol</h3>
+        <p>Want to build a fan site or learn JavaScript like Spider-Man? Enlist now and your message joins the patrol records.</p>
+      </div>
+      <form id="contactForm">
+        <label>
+          Name
+          <input type="text" name="name" placeholder="Your name" required />
+        </label>
+        <label>
+          Email
+          <input type="email" name="email" placeholder="Your email" required />
+        </label>
+        <label>
+          Message
+          <textarea name="message" rows="4" placeholder="Why do you want to join?" required></textarea>
+        </label>
+        <p id="formStatus" class="form-status" aria-live="polite"></p>
+        <button type="submit" class="button">Join Patrol</button>
+      </form>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Made with web powers and friendly neighborhood energy.</p>
+    <p style="font-size: 0.85rem; color: rgba(255,255,255,0.3); margin-top: 1rem;">
+      <a href="/admin.html" style="color: rgba(226,49,49,0.6); text-decoration: none;">Patrol Admin</a>
+    </p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

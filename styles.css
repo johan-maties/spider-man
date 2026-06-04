@@ -1,0 +1,272 @@
+:root {
+  --bg: #0b1120;
+  --bg-alt: #121c2f;
+  --text: #f4f4f7;
+  --muted: #b2becd;
+  --accent: #e23131;
+  --accent-soft: rgba(226, 49, 49, 0.14);
+  --card: rgba(255, 255, 255, 0.05);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--text);
+  background: radial-gradient(circle at top, rgba(226, 49, 49, 0.12), transparent 32%),
+    linear-gradient(180deg, #071018 0%, #0b1120 100%);
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.14;
+  background-image:
+    radial-gradient(circle at 25% 15%, rgba(226, 49, 49, 0.12), transparent 18%),
+    radial-gradient(circle at 80% 10%, rgba(226, 49, 49, 0.08), transparent 22%),
+    linear-gradient(135deg, rgba(255,255,255,0.06) 1px, transparent 1px),
+    linear-gradient(225deg, rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-size: 22rem 22rem, 28rem 28rem, 4rem 4rem, 4rem 4rem;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+.site-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem clamp(1rem, 4vw, 2rem);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.logo-icon {
+  width: 3rem;
+  height: 3rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(226, 49, 49, 0.2);
+  font-size: 1.5rem;
+}
+
+.theme-toggle {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: transparent;
+  color: var(--text);
+  padding: 0.9rem 1.2rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 2rem;
+  align-items: center;
+  padding: 3rem clamp(1rem, 4vw, 2rem);
+}
+
+.hero-copy {
+  max-width: 42rem;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.26em;
+  color: var(--accent);
+  font-size: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.hero h2 {
+  margin: 0;
+  font-size: clamp(2.8rem, 5vw, 4rem);
+  line-height: 0.95;
+}
+
+.hero p {
+  color: var(--muted);
+  max-width: 38rem;
+  line-height: 1.8;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1.75rem;
+  padding: 1rem 1.6rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--accent);
+  color: white;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.hero-visual {
+  min-height: 28rem;
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.spider-silhouette {
+  width: 18rem;
+  height: 18rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.18) 0%, transparent 65%);
+  position: relative;
+}
+
+.spider-silhouette::before,
+.spider-silhouette::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, transparent 24%, rgba(255,255,255,0.12) 25%, rgba(255,255,255,0.12) 26%, transparent 27%),
+    radial-gradient(circle, transparent 24%, rgba(255,255,255,0.1) 25%, rgba(255,255,255,0.1) 26%, transparent 27%);
+  background-size: 1.4rem 1.4rem;
+  mask-image: radial-gradient(circle, rgba(0,0,0,1) 45%, transparent 48%);
+}
+
+.section {
+  padding: 4rem clamp(1rem, 4vw, 2rem);
+}
+
+.about {
+  background: rgba(255, 255, 255, 0.03);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.about h3,
+.features h3,
+.contact h3 {
+  margin-top: 0;
+  font-size: clamp(2rem, 3vw, 2.5rem);
+}
+
+.cards,
+.feature-grid {
+  display: grid;
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.cards {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.card,
+.feature-item {
+  background: var(--card);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1.25rem;
+  padding: 1.5rem;
+}
+
+.card h4,
+.feature-item h4 {
+  margin: 0 0 0.75rem;
+  color: white;
+}
+
+.card p,
+.feature-item p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.75;
+}
+
+.feature-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.contact {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+.contact form {
+  display: grid;
+  gap: 1rem;
+}
+
+.contact label {
+  display: grid;
+  gap: 0.5rem;
+  color: var(--text);
+}
+
+.contact input,
+.contact textarea {
+  width: 100%;
+  padding: 1rem;
+  border-radius: 0.95rem;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+  color: var(--text);
+}
+
+.contact input::placeholder,
+.contact textarea::placeholder {
+  color: rgba(255,255,255,0.55);
+}
+
+.form-status {
+  margin: 0;
+  font-size: 0.95rem;
+  min-height: 1.4rem;
+  color: var(--text);
+}
+
+.form-status.success {
+  color: #7dd3fc;
+}
+
+.form-status.error {
+  color: #fb7185;
+}
+
+.site-footer {
+  padding: 1.5rem clamp(1rem, 4vw, 2rem);
+  text-align: center;
+  color: var(--muted);
+}
+
+@media (max-width: 860px) {
+  .hero,
+  .contact {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .hero h2 {
+    font-size: 2.5rem;
+  }
+  .theme-toggle {
+    width: 100%;
+  }
+}

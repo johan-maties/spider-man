@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>City Patrol Admin - Spider-Man</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .admin-container {
+      max-width: 900px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+
+    .admin-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 1rem;
+    }
+
+    .patrol-list {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .patrol-entry {
+      background: var(--card);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 1rem;
+      padding: 1.5rem;
+    }
+
+    .patrol-entry-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 0.75rem;
+    }
+
+    .patrol-entry-name {
+      font-weight: 600;
+      font-size: 1.1rem;
+      color: var(--text);
+    }
+
+    .patrol-entry-date {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .patrol-entry-email {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.95rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .patrol-entry-message {
+      color: var(--muted);
+      line-height: 1.6;
+      margin-bottom: 0.5rem;
+    }
+
+    .login-form {
+      max-width: 400px;
+      margin: 4rem auto;
+      padding: 2rem;
+      background: var(--card);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 1rem;
+    }
+
+    .login-form h2 {
+      margin-top: 0;
+      color: var(--text);
+    }
+
+    .login-form input {
+      width: 100%;
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      margin-bottom: 1rem;
+    }
+
+    .login-form button {
+      width: 100%;
+      padding: 0.75rem;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .login-form button:hover {
+      opacity: 0.9;
+    }
+
+    .error-msg {
+      color: #fb7185;
+      margin-bottom: 1rem;
+      font-size: 0.95rem;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 1rem;
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+
+    .logout-btn {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: var(--text);
+      padding: 0.6rem 1rem;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    .logout-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .patrol-count {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .table-container {
+      overflow-x: auto;
+      margin-bottom: 2rem;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      color: var(--text);
+    }
+
+    .admin-table thead {
+      background: rgba(255, 255, 255, 0.05);
+      border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .admin-table th {
+      padding: 1rem;
+      text-align: left;
+      font-weight: 600;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+
+    .admin-table td {
+      padding: 0.9rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      color: var(--muted);
+    }
+
+    .admin-table tbody tr:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .admin-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="logo">
+      <span class="logo-icon">🕷️</span>
+      <div>
+        <h1>Spider-Man</h1>
+        <p>Patrol Admin Dashboard</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="admin-container">
+    <div id="loginView">
+      <form class="login-form" id="loginForm">
+        <h2>Admin Access</h2>
+        <p style="color: var(--muted); margin-bottom: 1.5rem;">
+          Enter the patrol admin password to view City Patrol members.
+        </p>
+        <div id="loginError" class="error-msg"></div>
+        <input
+          type="password"
+          id="adminPassword"
+          placeholder="Admin password"
+          required
+          autofocus
+        />
+        <button type="submit">Access Dashboard</button>
+        <a href="/" class="back-link">← Back to website</a>
+      </form>
+    </div>
+
+    <div id="dashboardView" style="display: none;">
+      <div class="admin-header">
+        <div>
+          <h2 style="margin: 0; color: var(--text);">Admin Dashboard</h2>
+          <p class="patrol-count">Manage patrol entries and user accounts</p>
+        </div>
+        <button class="logout-btn" id="logoutBtn">Logout</button>
+      </div>
+
+      <div style="margin-bottom: 3rem;">
+        <h3 style="color: var(--text); border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem;">Registered Users</h3>
+        <div class="table-container">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Joined Date</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <tr><td colspan="4" style="text-align: center; color: var(--muted);">Loading users...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p id="userCount" class="patrol-count"></p>
+      </div>
+
+      <div>
+        <h3 style="color: var(--text); border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem;">City Patrol Members</h3>
+        <div class="table-container">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Message</th>
+                <th>Joined Date</th>
+              </tr>
+            </thead>
+            <tbody id="patrolTableBody">
+              <tr><td colspan="5" style="text-align: center; color: var(--muted);">Loading patrol members...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p id="memberCount" class="patrol-count"></p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p>City Patrol Admin — For authorized personnel only.</p>
+  </footer>
+
+  <script>
+    const loginView = document.getElementById('loginView');
+    const dashboardView = document.getElementById('dashboardView');
+    const loginForm = document.getElementById('loginForm');
+    const loginError = document.getElementById('loginError');
+    const usersTableBody = document.getElementById('usersTableBody');
+    const patrolTableBody = document.getElementById('patrolTableBody');
+    const userCount = document.getElementById('userCount');
+    const memberCount = document.getElementById('memberCount');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    const ADMIN_PASSWORD = 'spidersense';
+
+    function showLogin() {
+      loginView.style.display = 'block';
+      dashboardView.style.display = 'none';
+      sessionStorage.removeItem('adminAuthenticated');
+    }
+
+    function showDashboard() {
+      loginView.style.display = 'none';
+      dashboardView.style.display = 'block';
+      sessionStorage.setItem('adminAuthenticated', 'true');
+      loadData();
+    }
+
+    async function loadData() {
+      await loadUsers();
+      await loadPatrolMembers();
+    }
+
+    async function loadUsers() {
+      try {
+        const response = await fetch('/api/users?key=spidersense');
+        if (!response.ok) {
+          throw new Error('Failed to fetch users');
+        }
+
+        const users = await response.json();
+        displayUsers(users);
+      } catch (error) {
+        console.error('Error loading users:', error);
+        usersTableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--muted);">Error loading users</td></tr>';
+      }
+    }
+
+    async function loadPatrolMembers() {
+      try {
+        const response = await fetch('/api/patrols?key=spidersense');
+        if (!response.ok) {
+          throw new Error('Failed to fetch patrol members');
+        }
+
+        const patrols = await response.json();
+        displayPatrols(patrols);
+      } catch (error) {
+        console.error('Error loading patrols:', error);
+        patrolTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--muted);">Error loading patrol members</td></tr>';
+      }
+    }
+
+    function displayUsers(users) {
+      usersTableBody.innerHTML = '';
+
+      if (users.length === 0) {
+        usersTableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--muted);">No users registered yet</td></tr>';
+        userCount.textContent = '0 users';
+        return;
+      }
+
+      userCount.textContent = `${users.length} total users`;
+
+      users.forEach((user) => {
+        const joinedDate = new Date(user.created_at).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${user.id}</td>
+          <td>${escapeHtml(user.name)}</td>
+          <td>${escapeHtml(user.email)}</td>
+          <td>${joinedDate}</td>
+        `;
+        usersTableBody.appendChild(row);
+      });
+    }
+
+    function displayPatrols(patrols) {
+      patrolTableBody.innerHTML = '';
+
+      if (patrols.length === 0) {
+        patrolTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--muted);">No patrol members yet</td></tr>';
+        memberCount.textContent = '0 members';
+        return;
+      }
+
+      memberCount.textContent = `${patrols.length} total patrol members`;
+
+      patrols.forEach((patrol) => {
+        const joinedDate = new Date(patrol.joined_at).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${patrol.id}</td>
+          <td>${escapeHtml(patrol.name)}</td>
+          <td>${escapeHtml(patrol.email)}</td>
+          <td>${escapeHtml(patrol.message.substring(0, 50))}${patrol.message.length > 50 ? '...' : ''}</td>
+          <td>${joinedDate}</td>
+        `;
+        patrolTableBody.appendChild(row);
+      });
+    }
+
+    function escapeHtml(text) {
+      const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+      };
+      return text.replace(/[&<>"']/g, (m) => map[m]);
+    }
+
+    loginForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const password = document.getElementById('adminPassword').value;
+
+      if (password === ADMIN_PASSWORD) {
+        loginError.textContent = '';
+        showDashboard();
+      } else {
+        loginError.textContent = 'Incorrect password. Try again.';
+        document.getElementById('adminPassword').value = '';
+      }
+    });
+
+    logoutBtn.addEventListener('click', () => {
+      showLogin();
+      document.getElementById('adminPassword').value = '';
+      document.getElementById('adminPassword').focus();
+    });
+
+    if (sessionStorage.getItem('adminAuthenticated') === 'true') {
+      showDashboard();
+    }
+  </script>
+</body>
+</html>

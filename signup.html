@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign Up - Spider-Man</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .auth-container {
+      max-width: 450px;
+      margin: 4rem auto;
+      padding: 0 1rem;
+    }
+
+    .auth-card {
+      background: var(--card);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 1.25rem;
+      padding: 2rem;
+    }
+
+    .auth-card h2 {
+      margin-top: 0;
+      color: var(--text);
+      font-size: 1.8rem;
+    }
+
+    .auth-card p {
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .form-group {
+      display: grid;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+      color: var(--text);
+      font-weight: 500;
+      font-size: 0.95rem;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 0.85rem;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      font-size: 1rem;
+    }
+
+    .form-group input::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--accent);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 0.9rem;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 0.75rem;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 1rem;
+    }
+
+    .submit-btn:hover {
+      opacity: 0.9;
+    }
+
+    .auth-link {
+      text-align: center;
+      margin-top: 1.5rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .auth-link a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .auth-link a:hover {
+      text-decoration: underline;
+    }
+
+    .status-message {
+      padding: 0.9rem;
+      border-radius: 0.75rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.95rem;
+    }
+
+    .status-message.error {
+      background: rgba(251, 113, 133, 0.1);
+      color: #fb7185;
+      border: 1px solid rgba(251, 113, 133, 0.3);
+    }
+
+    .status-message.success {
+      background: rgba(125, 211, 252, 0.1);
+      color: #7dd3fc;
+      border: 1px solid rgba(125, 211, 252, 0.3);
+    }
+
+    .back-home {
+      display: inline-block;
+      margin-top: 1rem;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+
+    .back-home:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="logo">
+      <span class="logo-icon">🕷️</span>
+      <div>
+        <h1>Spider-Man</h1>
+        <p>Friendly neighborhood hero</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="auth-container">
+    <div class="auth-card">
+      <h2>Join the Team</h2>
+      <p>Create your hero account to become part of the Spider-Man community.</p>
+
+      <div id="statusMessage"></div>
+
+      <form id="signupForm">
+        <div class="form-group">
+          <label for="name">Full Name</label>
+          <input type="text" id="name" name="name" placeholder="Your full name" required />
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" name="email" placeholder="your@email.com" required />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" placeholder="Create a strong password" required />
+        </div>
+
+        <div class="form-group">
+          <label for="confirmPassword">Confirm Password</label>
+          <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm your password" required />
+        </div>
+
+        <button type="submit" class="submit-btn">Create Account</button>
+      </form>
+
+      <div class="auth-link">
+        Already have an account? <a href="/login.html">Log in here</a>
+      </div>
+
+      <a href="/" class="back-home">← Back to home</a>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p>Made with web powers and friendly neighborhood energy.</p>
+  </footer>
+
+  <script>
+    const signupForm = document.getElementById('signupForm');
+    const statusMessage = document.getElementById('statusMessage');
+
+    signupForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+
+      if (password !== confirmPassword) {
+        showStatus('Passwords do not match.', 'error');
+        return;
+      }
+
+      if (password.length < 6) {
+        showStatus('Password must be at least 6 characters.', 'error');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          showStatus(data.error || 'Sign up failed.', 'error');
+          return;
+        }
+
+        showStatus('Account created! Redirecting to login...', 'success');
+        setTimeout(() => {
+          window.location.href = '/login.html';
+        }, 2000);
+      } catch (error) {
+        showStatus('Error: ' + error.message, 'error');
+      }
+    });
+
+    function showStatus(message, type) {
+      statusMessage.textContent = message;
+      statusMessage.className = `status-message ${type}`;
+    }
+  </script>
+</body>
+</html>

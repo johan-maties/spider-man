@@ -1,0 +1,14 @@
+{
+  "name": "spider-man-website",
+  "version": "1.0.0",
+  "description": "Spider-Man fan website with City Patrol backend and SQLite storage.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.3",
+    "sqlite3": "^5.1.6",
+    "bcryptjs": "^2.4.3"
+  }
+}
