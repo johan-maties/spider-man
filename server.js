@@ -266,6 +266,46 @@ app.get('/api/users', requireAdmin, async (req, res) => {
   }
 });
 
+// Move a registered user into the City Patrol members list (admin only)
+app.post('/api/users/:id/move-to-patrol', requireAdmin, async (req, res) => {
+  const userId = parseInt(req.params.id, 10);
+  if (!userId || Number.isNaN(userId)) {
+    return res.status(400).json({ error: 'Invalid user id.' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const userRes = await client.query('SELECT id, name, email FROM users WHERE id = $1', [userId]);
+    if (userRes.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    const user = userRes.rows[0];
+    const email = user.email.trim().toLowerCase();
+
+    const dup = await client.query('SELECT 1 FROM city_patrol WHERE LOWER(email) = $1 LIMIT 1', [email]);
+    if (dup.rowCount > 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'A City Patrol member with that email already exists.' });
+    }
+
+    await client.query('INSERT INTO city_patrol (name, email, message) VALUES ($1, $2, $3)', [user.name, email, 'Moved to City Patrol by admin']);
+    await client.query('DELETE FROM users WHERE id = $1', [userId]);
+
+    await client.query('COMMIT');
+    res.json({ message: 'User moved to City Patrol.' });
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('Move to patrol error:', err.message);
+    res.status(500).json({ error: 'Could not move user to patrol.' });
+  } finally {
+    client.release();
+  }
+});
+
 app.post('/api/join', async (req, res) => {
   const { name, email, message } = req.body;
 

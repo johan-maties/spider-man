@@ -212,6 +212,7 @@
                 <th>Email</th>
                 <th>Role</th>
                 <th>Joined Date</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody id="usersTableBody">
@@ -345,8 +346,36 @@
           <td>${escapeHtml(user.email)}</td>
           <td>${escapeHtml(user.role)}</td>
           <td>${joinedDate}</td>
+          <td><button class="move-btn" data-user-id="${user.id}">Move to City Patrol</button></td>
         `;
         usersTableBody.appendChild(row);
+
+        const moveBtn = row.querySelector('.move-btn');
+        if (moveBtn) {
+          moveBtn.addEventListener('click', async () => {
+            if (!confirm('Move this user to City Patrol? This will remove them from Registered Users.')) return;
+            moveBtn.disabled = true;
+            try {
+              const resp = await fetch(`/api/users/${moveBtn.dataset.userId}/move-to-patrol`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+              });
+
+              const data = await resp.json().catch(() => ({}));
+              if (!resp.ok) {
+                alert(data.error || 'Unable to move user to City Patrol.');
+                return;
+              }
+              // Refresh both tables
+              await loadData();
+            } catch (err) {
+              console.error('Move error:', err);
+              alert('Error moving user to City Patrol.');
+            } finally {
+              moveBtn.disabled = false;
+            }
+          });
+        }
       });
     }
 
