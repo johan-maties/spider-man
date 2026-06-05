@@ -292,20 +292,44 @@
     const memberCount = document.getElementById('memberCount');
     const logoutBtn = document.getElementById('logoutBtn');
 
-    const token = getToken();
-    const userRole = localStorage.getItem('userRole');
+    checkAdminSession();
 
-    if (!token || userRole !== 'admin') {
-      document.body.innerHTML = '<main class="admin-container" style="text-align:center; color: var(--text);"><h2>Access Denied</h2><p>Admin access is required to view this page.</p><a href="/" style="color: var(--accent);">Return home</a></main>';
-    } else {
-      loadData();
+    async function checkAdminSession() {
+      try {
+        const resp = await fetch('/api/me');
+        if (!resp.ok) {
+          denyAccess();
+          return;
+        }
+
+        const data = await resp.json();
+        if (!data.user || data.user.role !== 'admin') {
+          denyAccess();
+          return;
+        }
+
+        localStorage.setItem('userRole', data.user.role);
+        localStorage.setItem('userName', data.user.name);
+        localStorage.setItem('userEmail', data.user.email);
+        loadData();
+      } catch (err) {
+        console.error('Admin session check failed:', err);
+        denyAccess();
+      }
     }
 
+    function denyAccess() {
+      document.body.innerHTML = '<main class="admin-container" style="text-align:center; color: var(--text);"><h2>Access Denied</h2><p>Admin access is required to view this page.</p><a href="/" style="color: var(--accent);">Return home</a></main>';
+    }
+
+    window.addEventListener('storage', (event) => {
+      if (['token', 'userRole', 'userName', 'userEmail'].includes(event.key)) {
+        checkAdminSession();
+      }
+    });
+
     function getToken() {
-      const localToken = localStorage.getItem('token');
-      if (localToken) return localToken;
-      const params = new URLSearchParams(window.location.search);
-      return params.get('token');
+      return localStorage.getItem('token');
     }
 
     // Search input wiring
@@ -335,11 +359,7 @@
 
     async function loadUsers() {
       try {
-        const response = await fetch('/api/users?onlyRegistered=true', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+const response = await fetch('/api/users?onlyRegistered=true');
 
         if (!response.ok) {
           throw new Error('Failed to fetch users');
@@ -355,9 +375,7 @@
 
     async function searchAll(query) {
       try {
-        const response = await fetch('/api/search?q=' + encodeURIComponent(query), {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await fetch('/api/search?q=' + encodeURIComponent(query));
         if (!response.ok) throw new Error('Search failed');
         const data = await response.json();
         displayUsers(data.users || []);
@@ -371,11 +389,7 @@
 
     async function loadPatrolMembers() {
       try {
-        const response = await fetch('/api/patrols', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+const response = await fetch('/api/patrols');
 
         if (!response.ok) {
           throw new Error('Failed to fetch patrol members');
@@ -435,7 +449,6 @@
             try {
               const resp = await fetch(`/api/users/${moveBtn.dataset.userId}/move-to-patrol`, {
                 method: 'POST',
-                headers: { Authorization: `Bearer ${token}` },
               });
 
               const data = await resp.json().catch(() => ({}));
@@ -463,7 +476,7 @@
             try {
               const resp = await fetch(`/api/users/${banBtn.dataset.userId}/ban`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ minutes, reason }),
               });
               const data = await resp.json().catch(() => ({}));
@@ -489,7 +502,6 @@
             try {
               const resp = await fetch(`/api/users/${removeBtn.dataset.userId}`, {
                 method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` },
               });
               const data = await resp.json().catch(() => ({}));
               if (!resp.ok) {
@@ -547,7 +559,6 @@
             try {
               const resp = await fetch(`/api/patrols/${removeBtn.dataset.patrolId}`, {
                 method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` },
               });
               const data = await resp.json().catch(() => ({}));
               if (!resp.ok) {
@@ -577,10 +588,16 @@
       return text.replace(/[&<>"']/g, (m) => map[m]);
     }
 
-    logoutBtn.addEventListener('click', () => {
+    logoutBtn.addEventListener('click', async () => {
       localStorage.removeItem('token');
       localStorage.removeItem('userName');
       localStorage.removeItem('userRole');
+      localStorage.removeItem('userEmail');
+      try {
+        await fetch('/api/logout', { method: 'POST' });
+      } catch (err) {
+        console.error('Logout request failed:', err);
+      }
       window.location.href = '/';
     });
   </script>

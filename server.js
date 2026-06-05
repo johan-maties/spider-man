@@ -127,6 +127,17 @@ initializeDatabase().catch((error) => {
 
 app.use(express.json());
 
+function parseCookies(req) {
+  const header = req.headers.cookie || '';
+  return header.split(';').reduce((cookies, pair) => {
+    const [name, ...rest] = pair.split('=');
+    const value = rest.join('=').trim();
+    if (!name) return cookies;
+    cookies[name.trim()] = decodeURIComponent(value);
+    return cookies;
+  }, {});
+}
+
 async function getSystemFlag(key) {
   const result = await pool.query('SELECT value FROM system_flags WHERE key = $1', [key]);
   return result.rowCount > 0 ? result.rows[0].value : null;
@@ -148,8 +159,15 @@ async function anyAdminExists() {
 
 async function authenticateToken(req) {
   const authHeader = req.headers.authorization || '';
-  const tokenParam = req.query.token;
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : tokenParam;
+  const cookies = parseCookies(req);
+  const tokenCookie = cookies.auth_token;
+  let token = null;
+
+  if (authHeader.startsWith('Bearer ')) {
+    token = authHeader.slice(7);
+  } else if (tokenCookie) {
+    token = tokenCookie;
+  }
 
   if (!token) {
     return null;
@@ -319,6 +337,12 @@ app.post('/api/login', async (req, res) => {
     const token = crypto.randomBytes(32).toString('hex');
     await pool.query('INSERT INTO auth_tokens (token, user_id) VALUES ($1, $2)', [token, user.id]);
 
+    res.cookie('auth_token', token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
     res.json({
       message: 'Login successful!',
       token,
@@ -327,6 +351,32 @@ app.post('/api/login', async (req, res) => {
   } catch (err) {
     console.error('Login error:', err.message);
     res.status(500).json({ error: 'Server error.' });
+  }
+});
+
+app.get('/api/me', async (req, res) => {
+  try {
+    const user = await authenticateToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    res.json({ user });
+  } catch (err) {
+    console.error('Current user error:', err.message);
+    res.status(500).json({ error: 'Could not retrieve current user.' });
+  }
+});
+
+app.post('/api/logout', async (req, res) => {
+  try {
+    const cookies = parseCookies(req);
+    const token = cookies.auth_token;
+    if (token) {
+      await pool.query('DELETE FROM auth_tokens WHERE token = $1', [token]);
+    }
+    res.clearCookie('auth_token');
+    res.json({ message: 'Logged out.' });
+  } catch (err) {
+    console.error('Logout error:', err.message);
+    res.status(500).json({ error: 'Could not log out.' });
   }
 });
 

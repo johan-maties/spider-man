@@ -49,6 +49,13 @@ function updateThemeText() {
   themeToggle.textContent = body.classList.contains('light-theme') ? 'Dark Mode' : 'Light Mode';
 }
 
+function clearSession() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('userName');
+  localStorage.removeItem('userRole');
+  localStorage.removeItem('userEmail');
+}
+
 function checkUserLogin() {
   const token = localStorage.getItem('token');
   const userName = localStorage.getItem('userName');
@@ -62,7 +69,8 @@ function checkUserLogin() {
 
     if (userRole === 'admin') {
       adminLink.style.display = 'inline-block';
-      adminLink.href = `/admin.html?token=${encodeURIComponent(token)}`;
+      adminLink.removeAttribute('href');
+      adminLink.href = '/admin.html';
     } else {
       adminLink.style.display = 'none';
       adminLink.removeAttribute('href');
@@ -80,6 +88,35 @@ function checkUserLogin() {
     loadAssignedComplaints();
   }
 }
+
+async function initializeSession() {
+  try {
+    const resp = await fetch('/api/me');
+    if (!resp.ok) {
+      clearSession();
+      checkUserLogin();
+      return;
+    }
+    const data = await resp.json();
+    localStorage.setItem('userName', data.user.name);
+    localStorage.setItem('userRole', data.user.role);
+    localStorage.setItem('userEmail', data.user.email);
+    checkUserLogin();
+  } catch (err) {
+    console.error('Session sync error:', err);
+    clearSession();
+    checkUserLogin();
+  }
+}
+
+window.addEventListener('storage', (event) => {
+  if (['token', 'userRole', 'userName', 'userEmail'].includes(event.key)) {
+    if (event.newValue !== event.oldValue) {
+      showToast('Session changed in another tab. UI is updating.', 'info');
+      initializeSession();
+    }
+  }
+});
 
 function setDashboardVisibility(userRole) {
   const isAdmin = userRole === 'admin';
@@ -130,10 +167,13 @@ async function loadAssignedComplaints() {
   }
 }
 
-logoutBtnHeader.addEventListener('click', () => {
-  localStorage.removeItem('token');
-  localStorage.removeItem('userName');
-  localStorage.removeItem('userRole');
+logoutBtnHeader.addEventListener('click', async () => {
+  clearSession();
+  try {
+    await fetch('/api/logout', { method: 'POST' });
+  } catch (err) {
+    console.error('Logout request failed:', err);
+  }
   checkUserLogin();
   window.location.href = '/';
 });
@@ -378,6 +418,6 @@ async function loadCommunityStats() {
 }
 
 // Initial load
-checkUserLogin();
+initializeSession();
 loadPosts();
 loadCommunityStats();

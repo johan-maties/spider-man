@@ -176,11 +176,27 @@
     const loginForm = document.getElementById('loginForm');
     const statusMessage = document.getElementById('statusMessage');
 
+    function clearSession() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('userName');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('userEmail');
+    }
+
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
 
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
+      const existingUserName = localStorage.getItem('userName');
+      const existingEmail = localStorage.getItem('userEmail');
+
+      if (existingUserName && existingEmail && existingEmail !== email) {
+        const confirmed = confirm(
+          `A different account is already signed in as ${existingUserName}. Logging in now will switch accounts and end the previous session. Continue?`
+        );
+        if (!confirmed) return;
+      }
 
       try {
         const response = await fetch('/api/login', {
@@ -196,10 +212,13 @@
           return;
         }
 
+        clearSession();
         showStatus('Login successful! Welcome hero.', 'success');
         localStorage.setItem('token', data.token);
         localStorage.setItem('userName', data.user.name);
         localStorage.setItem('userRole', data.user.role);
+        localStorage.setItem('userEmail', email);
+
         setTimeout(() => {
           window.location.href = '/';
         }, 1500);
@@ -212,6 +231,12 @@
       statusMessage.textContent = message;
       statusMessage.className = `status-message ${type}`;
     }
+
+    window.addEventListener('storage', (event) => {
+      if (event.key === 'token' || event.key === 'userRole' || event.key === 'userName' || event.key === 'userEmail') {
+        showStatus('Account session changed in another tab. You may need to reload.', 'info');
+      }
+    });
   </script>
 </body>
 </html>
