@@ -464,7 +464,7 @@ app.post('/api/reports', async (req, res) => {
   }
 });
 
-// Get reports: admins see all, patrol members see reports assigned to them or unassigned
+// Get reports: admins see all, patrol members see only complaints assigned to them
 app.get('/api/reports', async (req, res) => {
   try {
     const authUser = await authenticateToken(req);
@@ -474,7 +474,7 @@ app.get('/api/reports', async (req, res) => {
       return res.json(result.rows);
     }
     if (authUser.role === 'patrol') {
-      const result = await pool.query('SELECT * FROM reports WHERE assigned_to IS NULL OR assigned_to = $1 ORDER BY created_at DESC', [authUser.id]);
+      const result = await pool.query('SELECT * FROM reports WHERE assigned_to = $1 ORDER BY created_at DESC', [authUser.id]);
       return res.json(result.rows);
     }
     return res.status(403).json({ error: 'Access denied.' });
@@ -583,25 +583,34 @@ app.get('/api/posts', async (req, res) => {
 
 app.get('/api/community-stats', async (req, res) => {
   try {
-    const [usersRes, patrolsRes, postsRes, reportsRes, recentUsersRes, recentPatrolsRes, recentReportsRes] = await Promise.all([
+    const authUser = await authenticateToken(req);
+
+    const [usersRes, patrolsRes, postsRes, recentUsersRes, recentPatrolsRes] = await Promise.all([
       pool.query('SELECT COUNT(*)::int AS count FROM users'),
       pool.query('SELECT COUNT(*)::int AS count FROM city_patrol'),
       pool.query('SELECT COUNT(*)::int AS count FROM posts'),
-      pool.query('SELECT COUNT(*)::int AS count FROM reports'),
       pool.query('SELECT id, name, role, created_at FROM users ORDER BY created_at DESC LIMIT 3'),
       pool.query('SELECT id, name, email, joined_at FROM city_patrol ORDER BY joined_at DESC LIMIT 3'),
-      pool.query('SELECT id, reported_email, message, created_at FROM reports ORDER BY created_at DESC LIMIT 3'),
     ]);
 
-    res.json({
+    const response = {
       totalUsers: usersRes.rows[0].count,
       totalPatrolMembers: patrolsRes.rows[0].count,
       totalPosts: postsRes.rows[0].count,
-      totalReports: reportsRes.rows[0].count,
       recentMembers: recentUsersRes.rows,
       recentPatrolMembers: recentPatrolsRes.rows,
-      recentReports: recentReportsRes.rows,
-    });
+    };
+
+    if (authUser && authUser.role === 'admin') {
+      const [reportsRes, recentReportsRes] = await Promise.all([
+        pool.query('SELECT COUNT(*)::int AS count FROM reports'),
+        pool.query('SELECT id, reported_email, message, created_at FROM reports ORDER BY created_at DESC LIMIT 3'),
+      ]);
+      response.totalReports = reportsRes.rows[0].count;
+      response.recentReports = recentReportsRes.rows;
+    }
+
+    res.json(response);
   } catch (err) {
     console.error('Community stats error:', err.message);
     res.status(500).json({ error: 'Could not load community stats.' });

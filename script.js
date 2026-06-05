@@ -68,6 +68,58 @@ function checkUserLogin() {
     document.querySelector('a[href="/signup.html"]').style.display = 'inline-block';
     document.querySelector('a[href="/login.html"]').style.display = 'inline-block';
   }
+
+  setDashboardVisibility(userRole);
+  if (userRole === 'patrol') {
+    loadAssignedComplaints();
+  }
+}
+
+function setDashboardVisibility(userRole) {
+  const reportStatsCard = document.getElementById('reportStatsCard');
+  const recentReportsCard = document.getElementById('recentReportsCard');
+  const patrolComplaintsSection = document.getElementById('patrolComplaintsSection');
+
+  if (reportStatsCard) reportStatsCard.style.display = userRole === 'admin' ? 'block' : 'none';
+  if (recentReportsCard) recentReportsCard.style.display = userRole === 'admin' ? 'block' : 'none';
+  if (patrolComplaintsSection) patrolComplaintsSection.style.display = userRole === 'patrol' ? 'block' : 'none';
+}
+
+async function loadAssignedComplaints() {
+  const container = document.getElementById('assignedComplaintsContainer');
+  if (!container) return;
+
+  const token = localStorage.getItem('token');
+  if (!token) {
+    container.innerHTML = '<p style="color:var(--muted)">Log in to view assigned complaints.</p>';
+    return;
+  }
+
+  try {
+    const resp = await fetch('/api/reports', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!resp.ok) throw new Error('Failed to load assigned complaints');
+
+    const reports = await resp.json();
+    if (!reports.length) {
+      container.innerHTML = '<p style="color:var(--muted)">No complaints are currently assigned to you.</p>';
+      return;
+    }
+
+    container.innerHTML = reports
+      .map((r) => `
+        <div style="margin-bottom:0.75rem; padding:0.85rem; background:rgba(255,255,255,0.04); border-radius:0.75rem;">
+          <strong>${escapeHtml(r.reported_email || 'Unknown')}</strong>
+          <div style="color:var(--muted); margin:0.35rem 0;">${escapeHtml(r.message || '')}</div>
+          <div style="font-size:0.85rem; color:var(--muted);">Received ${timeAgo(r.created_at)}</div>
+        </div>
+      `)
+      .join('');
+  } catch (err) {
+    console.error('Assigned complaints load error:', err);
+    container.innerHTML = '<p style="color:var(--muted)">Unable to load assigned complaints.</p>';
+  }
 }
 
 logoutBtnHeader.addEventListener('click', () => {
@@ -279,24 +331,40 @@ if (postForm) {
 
 async function loadCommunityStats() {
   try {
-    const resp = await fetch('/api/community-stats');
+    const token = localStorage.getItem('token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const resp = await fetch('/api/community-stats', { headers });
     if (!resp.ok) throw new Error('Failed to load stats');
     const stats = await resp.json();
+
     document.getElementById('statUsers').textContent = stats.totalUsers;
     document.getElementById('statPatrols').textContent = stats.totalPatrolMembers;
     document.getElementById('statPosts').textContent = stats.totalPosts;
-    document.getElementById('statReports').textContent = stats.totalReports;
+
+    const reportStatsCard = document.getElementById('reportStatsCard');
+    const recentReportsCard = document.getElementById('recentReportsCard');
+    const hasReportStats = stats.totalReports != null && Array.isArray(stats.recentReports);
+
+    if (hasReportStats) {
+      if (reportStatsCard) reportStatsCard.style.display = 'block';
+      if (recentReportsCard) recentReportsCard.style.display = 'block';
+      document.getElementById('statReports').textContent = stats.totalReports;
+      document.getElementById('recentReports').innerHTML = stats.recentReports.length
+        ? stats.recentReports.map((r) => `<div>${escapeHtml(r.reported_email || 'Unknown')} - ${escapeHtml((r.message || '').substring(0, 60))}${(r.message || '').length > 60 ? '...' : ''}</div>`).join('')
+        : '<div>No reports yet.</div>';
+    } else {
+      if (reportStatsCard) reportStatsCard.style.display = 'none';
+      if (recentReportsCard) recentReportsCard.style.display = 'none';
+    }
+
     document.getElementById('recentMembers').innerHTML = stats.recentMembers.length ? stats.recentMembers.map((m) => `<div>${escapeHtml(m.name)} (${m.role})</div>`).join('') : '<div>No recent members yet.</div>';
     document.getElementById('recentPatrols').innerHTML = stats.recentPatrolMembers.length ? stats.recentPatrolMembers.map((p) => `<div>${escapeHtml(p.name)}</div>`).join('') : '<div>No new patrol members yet.</div>';
-    document.getElementById('recentReports').innerHTML = stats.recentReports.length ? stats.recentReports.map((r) => `<div>${escapeHtml(r.reported_email || 'Unknown')} - ${escapeHtml(r.message.substring(0, 60))}${r.message.length > 60 ? '...' : ''}</div>`).join('') : '<div>No reports yet.</div>';
   } catch (err) {
     console.error('Stats load error:', err);
   }
 }
 
 // Initial load
+checkUserLogin();
 loadPosts();
 loadCommunityStats();
-
-updateThemeText();
-checkUserLogin();

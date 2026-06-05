@@ -60,7 +60,7 @@
           <h4>Total Posts</h4>
           <p id="statPosts">—</p>
         </article>
-        <article class="card">
+        <article class="card" id="reportStatsCard" style="display:none;">
           <h4>Total Reports</h4>
           <p id="statReports">—</p>
         </article>
@@ -78,10 +78,17 @@
           <h4>New Patrol Members</h4>
           <div id="recentPatrols">Loading...</div>
         </div>
-        <div class="feature-item">
+        <div class="feature-item" id="recentReportsCard" style="display:none;">
           <h4>Recent Reports</h4>
           <div id="recentReports">Loading...</div>
         </div>
+      </div>
+    </section>
+
+    <section id="patrolComplaintsSection" class="section about" style="display:none;">
+      <div>
+        <h3>Assigned Complaints</h3>
+        <div id="assignedComplaintsContainer"><p style="color:var(--muted)">Loading assigned complaints...</p></div>
       </div>
     </section>
 
