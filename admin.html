@@ -198,7 +198,11 @@
           <h2 style="margin: 0; color: var(--text);">Admin Dashboard</h2>
           <p class="patrol-count">Manage patrol entries and user accounts</p>
         </div>
-        <button class="logout-btn" id="logoutBtn">Logout</button>
+        <div style="display:flex; gap:0.5rem; align-items:center;">
+          <input id="adminSearch" placeholder="Search users or patrols" style="padding:0.5rem; border-radius:6px; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.02); color:var(--text);" />
+          <button id="adminSearchBtn" class="logout-btn" style="padding:0.45rem 0.75rem;">Search</button>
+          <button class="logout-btn" id="logoutBtn">Logout</button>
+        </div>
       </div>
 
       <div style="margin-bottom: 3rem;">
@@ -234,6 +238,7 @@
                 <th>Email</th>
                 <th>Message</th>
                 <th>Joined Date</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody id="patrolTableBody">
@@ -274,6 +279,26 @@
       return params.get('token');
     }
 
+    // Search input wiring
+    const adminSearchInput = document.getElementById('adminSearch');
+    const adminSearchBtn = document.getElementById('adminSearchBtn');
+    if (adminSearchBtn && adminSearchInput) {
+      adminSearchBtn.addEventListener('click', () => {
+        const q = adminSearchInput.value.trim();
+        if (!q) return loadData();
+        searchAll(q);
+      });
+
+      adminSearchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const q = adminSearchInput.value.trim();
+          if (!q) return loadData();
+          searchAll(q);
+        }
+      });
+    }
+
     async function loadData() {
       await loadUsers();
       await loadPatrolMembers();
@@ -281,7 +306,7 @@
 
     async function loadUsers() {
       try {
-        const response = await fetch('/api/users', {
+        const response = await fetch('/api/users?onlyRegistered=true', {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -295,7 +320,23 @@
         displayUsers(users);
       } catch (error) {
         console.error('Error loading users:', error);
-        usersTableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--muted);">Error loading users</td></tr>';
+        usersTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--muted);">Error loading users</td></tr>';
+      }
+    }
+
+    async function searchAll(query) {
+      try {
+        const response = await fetch('/api/search?q=' + encodeURIComponent(query), {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) throw new Error('Search failed');
+        const data = await response.json();
+        displayUsers(data.users || []);
+        displayPatrols(data.patrols || []);
+      } catch (err) {
+        console.error('Search error:', err);
+        usersTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--muted);">Error during search</td></tr>';
+        patrolTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--muted);">Error during search</td></tr>';
       }
     }
 
@@ -323,7 +364,7 @@
       usersTableBody.innerHTML = '';
 
       if (users.length === 0) {
-        usersTableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--muted);">No users registered yet</td></tr>';
+        usersTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--muted);">No users registered yet</td></tr>';
         userCount.textContent = '0 users';
         return;
       }
@@ -346,14 +387,21 @@
           <td>${escapeHtml(user.email)}</td>
           <td>${escapeHtml(user.role)}</td>
           <td>${joinedDate}</td>
-          <td><button class="move-btn" data-user-id="${user.id}">Move to City Patrol</button></td>
+          <td>
+            <button class="move-btn" data-user-id="${user.id}">Move to City Patrol</button>
+            <button class="ban-btn" data-user-id="${user.id}">Ban</button>
+            <button class="remove-btn" data-user-id="${user.id}">Remove</button>
+          </td>
         `;
         usersTableBody.appendChild(row);
 
         const moveBtn = row.querySelector('.move-btn');
+        const banBtn = row.querySelector('.ban-btn');
+        const removeBtn = row.querySelector('.remove-btn');
+
         if (moveBtn) {
           moveBtn.addEventListener('click', async () => {
-            if (!confirm('Move this user to City Patrol? This will remove them from Registered Users.')) return;
+            if (!confirm('Move this user to City Patrol? This will change their role to patrol.')) return;
             moveBtn.disabled = true;
             try {
               const resp = await fetch(`/api/users/${moveBtn.dataset.userId}/move-to-patrol`, {
@@ -366,13 +414,65 @@
                 alert(data.error || 'Unable to move user to City Patrol.');
                 return;
               }
-              // Refresh both tables
               await loadData();
             } catch (err) {
               console.error('Move error:', err);
               alert('Error moving user to City Patrol.');
             } finally {
               moveBtn.disabled = false;
+            }
+          });
+        }
+
+        if (banBtn) {
+          banBtn.addEventListener('click', async () => {
+            const minutesStr = prompt('Ban duration in minutes (0 for permanent):', '60');
+            if (minutesStr === null) return;
+            const minutes = parseInt(minutesStr, 10);
+            const reason = prompt('Optional reason for ban:') || '';
+            banBtn.disabled = true;
+            try {
+              const resp = await fetch(`/api/users/${banBtn.dataset.userId}/ban`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ minutes, reason }),
+              });
+              const data = await resp.json().catch(() => ({}));
+              if (!resp.ok) {
+                alert(data.error || 'Unable to ban user.');
+                return;
+              }
+              alert('User banned.');
+              await loadData();
+            } catch (err) {
+              console.error('Ban error:', err);
+              alert('Error banning user.');
+            } finally {
+              banBtn.disabled = false;
+            }
+          });
+        }
+
+        if (removeBtn) {
+          removeBtn.addEventListener('click', async () => {
+            if (!confirm('Remove this user permanently?')) return;
+            removeBtn.disabled = true;
+            try {
+              const resp = await fetch(`/api/users/${removeBtn.dataset.userId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              const data = await resp.json().catch(() => ({}));
+              if (!resp.ok) {
+                alert(data.error || 'Unable to remove user.');
+                return;
+              }
+              await loadData();
+            } catch (err) {
+              console.error('Remove error:', err);
+              alert('Error removing user.');
+            } finally {
+              removeBtn.disabled = false;
             }
           });
         }
@@ -406,8 +506,34 @@
           <td>${escapeHtml(patrol.email)}</td>
           <td>${escapeHtml(patrol.message.substring(0, 50))}${patrol.message.length > 50 ? '...' : ''}</td>
           <td>${joinedDate}</td>
+          <td><button class="remove-patrol-btn" data-patrol-id="${patrol.id}">Remove</button></td>
         `;
         patrolTableBody.appendChild(row);
+
+        const removeBtn = row.querySelector('.remove-patrol-btn');
+        if (removeBtn) {
+          removeBtn.addEventListener('click', async () => {
+            if (!confirm('Remove this City Patrol member permanently?')) return;
+            removeBtn.disabled = true;
+            try {
+              const resp = await fetch(`/api/patrols/${removeBtn.dataset.patrolId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              const data = await resp.json().catch(() => ({}));
+              if (!resp.ok) {
+                alert(data.error || 'Unable to remove patrol member.');
+                return;
+              }
+              await loadData();
+            } catch (err) {
+              console.error('Remove patrol error:', err);
+              alert('Error removing patrol member.');
+            } finally {
+              removeBtn.disabled = false;
+            }
+          });
+        }
       });
     }
 
