@@ -6,6 +6,39 @@ const userGreeting = document.getElementById('userGreeting');
 const logoutBtnHeader = document.getElementById('logoutBtnHeader');
 const adminLink = document.getElementById('adminLink');
 
+// Toast helper
+function showToast(message, type = 'info', timeout = 4000) {
+  let container = document.getElementById('toastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.style.position = 'fixed';
+    container.style.right = '1rem';
+    container.style.bottom = '1rem';
+    container.style.zIndex = 9999;
+    document.body.appendChild(container);
+  }
+
+  const el = document.createElement('div');
+  el.textContent = message;
+  el.style.marginTop = '0.5rem';
+  el.style.padding = '0.6rem 0.9rem';
+  el.style.borderRadius = '8px';
+  el.style.color = 'white';
+  el.style.minWidth = '180px';
+  el.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+  if (type === 'error') el.style.background = '#ef4444';
+  else if (type === 'success') el.style.background = '#10b981';
+  else el.style.background = 'rgba(55,65,81,0.95)';
+
+  container.appendChild(el);
+  setTimeout(() => {
+    el.style.transition = 'opacity 300ms';
+    el.style.opacity = '0';
+    setTimeout(() => el.remove(), 300);
+  }, timeout);
+}
+
 function updateThemeText() {
   themeToggle.textContent = body.classList.contains('light-theme') ? 'Dark Mode' : 'Light Mode';
 }
@@ -160,15 +193,15 @@ function renderPosts(posts) {
 
     likeBtn.addEventListener('click', async () => {
       const token = localStorage.getItem('token');
-      if (!token) { alert('Log in to like posts.'); return; }
+      if (!token) { showToast('Log in to like posts.', 'error'); return; }
       likeBtn.disabled = true;
       try {
         const r = await fetch(`/api/posts/${p.id}/like`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
-        if (!r.ok) { alert('Unable to toggle like'); return; }
+        if (!r.ok) { showToast('Unable to toggle like', 'error'); return; }
         await loadPosts();
       } catch (err) {
         console.error('Like error:', err);
-        alert('Error toggling like');
+        showToast('Error toggling like', 'error');
       } finally { likeBtn.disabled = false; }
     });
 
@@ -200,7 +233,7 @@ function renderPosts(posts) {
             if (!body) return;
             try {
               const r = await fetch(`/api/posts/${p.id}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ body }) });
-              if (!r.ok) { alert('Unable to post comment'); return; }
+              if (!r.ok) { showToast('Unable to post comment', 'error'); return; }
               form.elements.comment.value = '';
               // refresh comments
               commentsContainer.innerHTML = '';
@@ -216,7 +249,7 @@ function renderPosts(posts) {
                 list2.appendChild(el);
               });
               commentsContainer.appendChild(list2);
-            } catch (err) { console.error('Comment error:', err); alert('Error posting comment'); }
+            } catch (err) { console.error('Comment error:', err); showToast('Error posting comment', 'error'); }
           });
           commentsContainer.appendChild(form);
         }

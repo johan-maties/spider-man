@@ -178,6 +178,15 @@ async function requireAuth(req, res, next) {
   }
 }
 
+// Basic profanity filter (simple keyword list). Update the list as needed.
+const PROFANITY_WORDS = ['fuck', 'shit', 'bitch', 'ass', 'damn'];
+
+function containsProfanity(text) {
+  if (!text) return false;
+  const lowered = text.toLowerCase();
+  return PROFANITY_WORDS.some((w) => new RegExp('\\b' + w.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&') + '\\b', 'i').test(lowered));
+}
+
 async function requireAdmin(req, res, next) {
   try {
     const user = await authenticateToken(req);
@@ -543,6 +552,9 @@ app.get('/api/patrols', requireAdmin, async (req, res) => {
 app.post('/api/posts', requireAuth, async (req, res) => {
   const { title, body } = req.body;
   if (!title || !body) return res.status(400).json({ error: 'Title and body are required.' });
+  if (containsProfanity(title) || containsProfanity(body)) {
+    return res.status(400).json({ error: 'Post contains disallowed language. Please remove vulgar words.' });
+  }
   try {
     const result = await pool.query('INSERT INTO posts (user_id, title, body) VALUES ($1, $2, $3) RETURNING id, created_at', [req.user.id, title, body]);
     res.json({ message: 'Post created.', postId: result.rows[0].id, created_at: result.rows[0].created_at });
