@@ -159,6 +159,23 @@
       </div>
     </section>
 
+    <section id="report-issue" class="section report-section">
+      <div class="section-header">
+        <h3>Report a Concern</h3>
+        <p>Submit a safety issue or community complaint for patrol review.</p>
+      </div>
+      <article class="post-box card">
+        <form id="reportForm" class="post-form">
+          <input type="email" id="reportEmail" name="reportEmail" placeholder="Reported user's email (optional)" />
+          <textarea id="reportMessage" name="reportMessage" rows="4" placeholder="Describe your concern in detail..." required></textarea>
+          <div class="post-form-actions">
+            <div id="reportStatus" class="form-status" aria-live="polite"></div>
+            <button type="submit" class="button button-primary">Submit Report</button>
+          </div>
+        </form>
+      </article>
+    </section>
+
     <section id="patrol" class="section patrol-section role-patrol" style="display:none;">
       <div class="section-header">
         <h3>Assigned Complaints</h3>
@@ -175,11 +192,11 @@
         <p>Admin-only overview of complaints and moderation activity.</p>
       </div>
       <div class="cards-row">
-        <article class="status-card card">
+        <article class="status-card card" id="reportStatsCard">
           <h4>New reports</h4>
           <p id="recentReports">Loading...</p>
         </article>
-        <article class="status-card card">
+        <article class="status-card card" id="recentReportsCard">
           <h4>Pending review</h4>
           <p>Review assigned issues in the admin dashboard.</p>
         </article>

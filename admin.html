@@ -219,7 +219,7 @@
         </div>
       </div>
 
-      <div style="margin-bottom: 3rem;">
+      <div style="margin-bottom: 2rem;">
         <h3 style="color: var(--text); border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem;">Registered Users</h3>
         <div class="table-container">
           <table class="admin-table">
@@ -228,20 +228,42 @@
                 <th>ID</th>
                 <th>Name</th>
                 <th>Email</th>
-                <th>Role</th>
                 <th>Joined Date</th>
+                <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody id="usersTableBody">
-              <tr><td colspan="4" style="text-align: center; color: var(--muted);">Loading users...</td></tr>
+              <tr><td colspan="6" style="text-align: center; color: var(--muted);">Loading users...</td></tr>
             </tbody>
           </table>
         </div>
         <p id="userCount" class="patrol-count"></p>
       </div>
 
-      <div>
+      <div style="margin-bottom: 2rem;">
+        <h3 style="color: var(--text); border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem;">Banned Users</h3>
+        <div class="table-container">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Ban Reason</th>
+                <th>Banned Until</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="bannedTableBody">
+              <tr><td colspan="6" style="text-align: center; color: var(--muted);">Loading banned users...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p id="bannedCount" class="patrol-count"></p>
+      </div>
+
+      <div style="margin-bottom: 2rem;">
         <h3 style="color: var(--text); border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem;">City Patrol Members</h3>
         <div class="table-container">
           <table class="admin-table">
@@ -256,11 +278,34 @@
               </tr>
             </thead>
             <tbody id="patrolTableBody">
-              <tr><td colspan="5" style="text-align: center; color: var(--muted);">Loading patrol members...</td></tr>
+              <tr><td colspan="6" style="text-align: center; color: var(--muted);">Loading patrol members...</td></tr>
             </tbody>
           </table>
         </div>
         <p id="memberCount" class="patrol-count"></p>
+      </div>
+
+      <div>
+        <h3 style="color: var(--text); border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem;">Reports & Assignments</h3>
+        <div class="table-container">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Report</th>
+                <th>Reporter</th>
+                <th>Assigned To</th>
+                <th>Status</th>
+                <th>Assigned Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="reportsTableBody">
+              <tr><td colspan="7" style="text-align: center; color: var(--muted);">Loading reports...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p id="reportCount" class="patrol-count"></p>
       </div>
     </div>
   </main>
@@ -364,13 +409,12 @@
     }
 
     async function loadData() {
-      await loadUsers();
-      await loadPatrolMembers();
+      await Promise.all([loadUsers(), loadBannedUsers(), loadPatrolMembers(), loadReports()]);
     }
 
     async function loadUsers() {
       try {
-        const response = await fetch('/api/users?onlyRegistered=true', { credentials: 'same-origin' });
+        const response = await fetch('/api/users?role=user&banned=false', { credentials: 'same-origin' });
 
         if (!response.ok) {
           throw new Error('Failed to fetch users');
@@ -384,23 +428,39 @@
       }
     }
 
+    async function loadBannedUsers() {
+      try {
+        const response = await fetch('/api/users?banned=true', { credentials: 'same-origin' });
+        if (!response.ok) {
+          throw new Error('Failed to fetch banned users');
+        }
+        const users = await response.json();
+        displayBannedUsers(users);
+      } catch (error) {
+        console.error('Error loading banned users:', error);
+        bannedTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--muted);">Error loading banned users</td></tr>';
+      }
+    }
+
     async function searchAll(query) {
       try {
         const response = await fetch('/api/search?q=' + encodeURIComponent(query), { credentials: 'same-origin' });
         if (!response.ok) throw new Error('Search failed');
         const data = await response.json();
-        displayUsers(data.users || []);
+        displayUsers((data.users || []).filter((u) => u.role === 'user' && !u.banned_until));
+        displayBannedUsers((data.users || []).filter((u) => u.banned_until));
         displayPatrols(data.patrols || []);
       } catch (err) {
         console.error('Search error:', err);
         usersTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--muted);">Error during search</td></tr>';
+        bannedTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--muted);">Error during search</td></tr>';
         patrolTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--muted);">Error during search</td></tr>';
       }
     }
 
     async function loadPatrolMembers() {
       try {
-        const response = await fetch('/api/patrols', { credentials: 'same-origin' });
+        const response = await fetch('/api/users?role=patrol', { credentials: 'same-origin' });
 
         if (!response.ok) {
           throw new Error('Failed to fetch patrol members');
@@ -410,7 +470,19 @@
         displayPatrols(patrols);
       } catch (error) {
         console.error('Error loading patrols:', error);
-        patrolTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--muted);">Error loading patrol members</td></tr>';
+        patrolTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--muted);">Error loading patrol members</td></tr>';
+      }
+    }
+
+    async function loadReports() {
+      try {
+        const response = await fetch('/api/reports', { credentials: 'same-origin' });
+        if (!response.ok) throw new Error('Failed to fetch reports');
+        const reports = await response.json();
+        displayReports(reports);
+      } catch (error) {
+        console.error('Error loading reports:', error);
+        reportsTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--muted);">Error loading reports</td></tr>';
       }
     }
 
@@ -513,6 +585,7 @@
             try {
               const resp = await fetch(`/api/users/${removeBtn.dataset.userId}`, {
                 method: 'DELETE',
+                credentials: 'same-origin',
               });
               const data = await resp.json().catch(() => ({}));
               if (!resp.ok) {
@@ -531,8 +604,248 @@
       });
     }
 
-    function displayPatrols(patrols) {
-      patrolTableBody.innerHTML = '';
+    function displayBannedUsers(users) {
+      bannedTableBody.innerHTML = '';
+      if (users.length === 0) {
+        bannedTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--muted);">No banned users found</td></tr>';
+        bannedCount.textContent = '0 banned users';
+        return;
+      }
+      bannedCount.textContent = `${users.length} banned users`;
+      users.forEach((user) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${user.id}</td>
+          <td>${escapeHtml(user.name)}</td>
+          <td>${escapeHtml(user.email)}</td>
+          <td>${escapeHtml(user.ban_reason || 'No reason provided')}</td>
+          <td>${user.banned_until ? new Date(user.banned_until).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Permanent'}</td>
+          <td>
+            <button class="unban-btn" data-user-id="${user.id}">Unban</button>
+            <button class="remove-btn" data-user-id="${user.id}">Remove</button>
+          </td>
+        `;
+        bannedTableBody.appendChild(row);
+        row.querySelector('.unban-btn')?.addEventListener('click', () => handleUnbanUser(user.id));
+        row.querySelector('.remove-btn')?.addEventListener('click', () => handleRemoveUser(user.id));
+      });
+    }
+
+    function displayReports(reports) {
+      reportsTableBody.innerHTML = '';
+      if (reports.length === 0) {
+        reportsTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--muted);">No reports found</td></tr>';
+        reportCount.textContent = '0 reports';
+        return;
+      }
+      reportCount.textContent = `${reports.length} reports`;
+      reports.forEach((report) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${report.id}</td>
+          <td>${escapeHtml(report.message.substring(0, 80))}${report.message.length > 80 ? '...' : ''}</td>
+          <td>${escapeHtml(report.reporter_name || 'Anonymous')}</td>
+          <td>${escapeHtml(report.assigned_name || 'Unassigned')}</td>
+          <td>${escapeHtml(report.status)}</td>
+          <td>${report.assigned_at ? new Date(report.assigned_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+          <td>
+            <button class="assign-report-btn" data-report-id="${report.id}">Assign</button>
+            <button class="update-report-btn" data-report-id="${report.id}">Update</button>
+          </td>
+        `;
+        reportsTableBody.appendChild(row);
+        row.querySelector('.assign-report-btn')?.addEventListener('click', () => handleAssignReport(report.id));
+        row.querySelector('.update-report-btn')?.addEventListener('click', () => handleUpdateReport(report.id, report.status, report.status_notes));
+      });
+    }
+
+    async function handleMoveToPatrol(userId) {
+      if (!confirm('Move this user to City Patrol?')) return;
+      try {
+        const resp = await fetch(`/api/users/${userId}/move-to-patrol`, { method: 'POST', credentials: 'same-origin' });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+          showToast(data.error || 'Failed to move user to patrol.', 'error');
+          return;
+        }
+        showToast('User moved to City Patrol.', 'success');
+        await loadData();
+      } catch (err) {
+        console.error('Patrol move error:', err);
+        showToast('Error moving user to patrol.', 'error');
+      }
+    }
+
+    async function handleBanUser(userId) {
+      const duration = prompt('Enter ban duration: 1h, 1d, 7d, 30d, perm');
+      if (duration === null) return;
+      const mapping = { '1h': 60, '1d': 1440, '7d': 10080, '30d': 43200, perm: 0 };
+      const minutes = mapping[duration.trim().toLowerCase()];
+      if (minutes === undefined) {
+        showToast('Invalid duration selection.', 'error');
+        return;
+      }
+      const reason = prompt('Optional ban reason:') || '';
+      try {
+        const resp = await fetch(`/api/users/${userId}/ban`, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ minutes, reason }),
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+          showToast(data.error || 'Could not ban user.', 'error');
+          return;
+        }
+        showToast('User banned successfully.', 'success');
+        await loadData();
+      } catch (err) {
+        console.error('Ban user error:', err);
+        showToast('Error banning user.', 'error');
+      }
+    }
+
+    async function handleUnbanUser(userId) {
+      if (!confirm('Unban this user?')) return;
+      try {
+        const resp = await fetch(`/api/users/${userId}/unban`, { method: 'POST', credentials: 'same-origin' });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+          showToast(data.error || 'Could not unban user.', 'error');
+          return;
+        }
+        showToast('User unbanned successfully.', 'success');
+        await loadData();
+      } catch (err) {
+        console.error('Unban error:', err);
+        showToast('Error unbanning user.', 'error');
+      }
+    }
+
+    async function handleRemoveUser(userId) {
+      if (!confirm('Remove this user permanently?')) return;
+      try {
+        const resp = await fetch(`/api/users/${userId}`, { method: 'DELETE', credentials: 'same-origin' });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+          showToast(data.error || 'Could not remove user.', 'error');
+          return;
+        }
+        showToast('User removed.', 'success');
+        await loadData();
+      } catch (err) {
+        console.error('Remove user error:', err);
+        showToast('Error removing user.', 'error');
+      }
+    }
+
+    async function handleRemovePatrol(patrolId) {
+      if (!confirm('Remove this City Patrol member permanently?')) return;
+      try {
+        const resp = await fetch(`/api/patrols/${patrolId}`, { method: 'DELETE', credentials: 'same-origin' });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+          showToast(data.error || 'Could not remove patrol member.', 'error');
+          return;
+        }
+        showToast('Patrol member removed.', 'success');
+        await loadData();
+      } catch (err) {
+        console.error('Remove patrol error:', err);
+        showToast('Error removing patrol member.', 'error');
+      }
+    }
+
+    async function handleAssignReport(reportId) {
+      try {
+        const patrolResponse = await fetch('/api/users?role=patrol', { credentials: 'same-origin' });
+        if (!patrolResponse.ok) {
+          showToast('Unable to load patrol members.', 'error');
+          return;
+        }
+        const patrols = await patrolResponse.json();
+        if (!patrols.length) {
+          showToast('No patrol members available for assignment.', 'error');
+          return;
+        }
+        const choices = patrols.map((p) => `${p.id}: ${p.name} (${p.email})`).join('\n');
+        const selection = prompt(`Assign report to patrol member by ID:\n${choices}`);
+        if (!selection) return;
+        const patrolUserId = parseInt(selection, 10);
+        if (Number.isNaN(patrolUserId)) {
+          showToast('Invalid patrol user id.', 'error');
+          return;
+        }
+        const resp = await fetch(`/api/reports/${reportId}/assign`, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ patrolUserId }),
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+          showToast(data.error || 'Could not assign report.', 'error');
+          return;
+        }
+        showToast('Report assigned.', 'success');
+        await loadReports();
+      } catch (err) {
+        console.error('Assign report error:', err);
+        showToast('Error assigning report.', 'error');
+      }
+    }
+
+    async function handleUpdateReport(reportId, currentStatus, currentNotes) {
+      const newStatus = prompt('Set report status (new, assigned, in_progress, resolved, needs_info):', currentStatus || 'assigned');
+      if (!newStatus) return;
+      const normalizedStatus = newStatus.trim();
+      const validStatuses = ['new', 'assigned', 'in_progress', 'resolved', 'needs_info'];
+      if (!validStatuses.includes(normalizedStatus)) {
+        showToast('Invalid status value.', 'error');
+        return;
+      }
+      const notes = prompt('Update status notes:', currentNotes || '');
+      try {
+        const resp = await fetch(`/api/reports/${reportId}/status`, {
+          method: 'PUT',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: normalizedStatus, notes }),
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+          showToast(data.error || 'Could not update report.', 'error');
+          return;
+        }
+        showToast('Report updated.', 'success');
+        await loadReports();
+      } catch (err) {
+        console.error('Update report error:', err);
+        showToast('Error updating report.', 'error');
+      }
+    }
+
+    function escapeHtml(text) {
+      const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+      };
+      return String(text || '').replace(/[&<>"']/g, (m) => map[m]);
+    }
+
+    logoutBtn.addEventListener('click', async () => {
+      try {
+        await fetch('/api/logout', { method: 'POST', credentials: 'same-origin' });
+      } catch (err) {
+        console.error('Logout request failed:', err);
+      }
+      window.location.href = '/';
+    });
+  </script>      patrolTableBody.innerHTML = '';
 
       if (patrols.length === 0) {
         patrolTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--muted);">No data found</td></tr>';
@@ -543,20 +856,15 @@
       memberCount.textContent = `${patrols.length} total patrol members`;
 
       patrols.forEach((patrol) => {
-        const joinedDate = new Date(patrol.joined_at).toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        });
+        const joinedDate = formatDate(patrol.created_at || patrol.joined_at);
+        const note = patrol.role ? patrol.role : 'patrol';
 
         const row = document.createElement('tr');
         row.innerHTML = `
           <td>${patrol.id}</td>
           <td>${escapeHtml(patrol.name)}</td>
           <td>${escapeHtml(patrol.email)}</td>
-          <td>${escapeHtml(patrol.message.substring(0, 50))}${patrol.message.length > 50 ? '...' : ''}</td>
+          <td>${escapeHtml(note)}</td>
           <td>${joinedDate}</td>
           <td><button class="remove-patrol-btn" data-patrol-id="${patrol.id}">Remove</button></td>
         `;

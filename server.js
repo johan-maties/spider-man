@@ -41,6 +41,9 @@ async function initializeDatabase() {
   );
 
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user'`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_until TIMESTAMPTZ`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_reason TEXT`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_duration INTEGER`);
 
   await pool.query(
     `CREATE TABLE IF NOT EXISTS auth_tokens (
@@ -74,6 +77,8 @@ async function initializeDatabase() {
     )`
   );
 
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS city_patrol_email_lower_idx ON city_patrol (LOWER(email))`);
+
   await pool.query(
     `CREATE TABLE IF NOT EXISTS posts (
       id SERIAL PRIMARY KEY,
@@ -103,9 +108,6 @@ async function initializeDatabase() {
     )`
   );
 
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_until TIMESTAMPTZ`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_reason TEXT`);
-
   await pool.query(
     `CREATE TABLE IF NOT EXISTS reports (
       id SERIAL PRIMARY KEY,
@@ -114,6 +116,10 @@ async function initializeDatabase() {
       reported_email TEXT,
       message TEXT NOT NULL,
       assigned_to INTEGER NULL,
+      assigned_at TIMESTAMPTZ,
+      status TEXT NOT NULL DEFAULT 'new',
+      status_notes TEXT,
+      updated_at TIMESTAMPTZ DEFAULT NOW(),
       created_at TIMESTAMPTZ DEFAULT NOW()
     )`
   );
@@ -383,11 +389,23 @@ app.post('/api/logout', async (req, res) => {
 // Get all users (admin only)
 app.get('/api/users', requireAdmin, async (req, res) => {
   try {
-    const onlyRegistered = req.query.onlyRegistered === 'true';
-    let q = 'SELECT id, name, email, role, created_at, banned_until FROM users';
+    const roleFilter = req.query.role;
+    const banned = req.query.banned;
+    let q = 'SELECT id, name, email, role, created_at, banned_until, ban_reason, ban_duration FROM users';
     const params = [];
-    if (onlyRegistered) {
-      q += " WHERE role = 'user'";
+    const conditions = [];
+
+    if (roleFilter) {
+      conditions.push(`role = $${params.length + 1}`);
+      params.push(roleFilter);
+    }
+    if (banned === 'true') {
+      conditions.push('banned_until IS NOT NULL');
+    } else if (banned === 'false') {
+      conditions.push('banned_until IS NULL');
+    }
+    if (conditions.length) {
+      q += ' WHERE ' + conditions.join(' AND ');
     }
     q += ' ORDER BY created_at DESC';
     const result = await pool.query(q, params);
@@ -472,13 +490,18 @@ app.post('/api/users/:id/ban', requireAdmin, async (req, res) => {
   if (!userId || Number.isNaN(userId)) return res.status(400).json({ error: 'Invalid user id.' });
   try {
     let bannedUntil = null;
+    let banDuration = null;
     if (typeof minutes === 'number' && minutes > 0) {
       bannedUntil = new Date(Date.now() + minutes * 60000).toISOString();
+      banDuration = minutes;
     } else if (minutes === 0) {
-      // permanent ban
       bannedUntil = new Date('2999-12-31T23:59:59Z').toISOString();
+      banDuration = 0;
     }
-    await pool.query('UPDATE users SET banned_until = $1, ban_reason = $2 WHERE id = $3', [bannedUntil, reason || null, userId]);
+    await pool.query(
+      'UPDATE users SET banned_until = $1, ban_reason = $2, ban_duration = $3 WHERE id = $4',
+      [bannedUntil, reason || null, banDuration, userId]
+    );
     res.json({ message: 'User banned.' });
   } catch (err) {
     console.error('Ban user error:', err.message);
@@ -490,7 +513,7 @@ app.post('/api/users/:id/unban', requireAdmin, async (req, res) => {
   const userId = parseInt(req.params.id, 10);
   if (!userId || Number.isNaN(userId)) return res.status(400).json({ error: 'Invalid user id.' });
   try {
-    await pool.query('UPDATE users SET banned_until = NULL, ban_reason = NULL WHERE id = $1', [userId]);
+    await pool.query('UPDATE users SET banned_until = NULL, ban_reason = NULL, ban_duration = NULL WHERE id = $1', [userId]);
     res.json({ message: 'User unbanned.' });
   } catch (err) {
     console.error('Unban user error:', err.message);
@@ -519,12 +542,31 @@ app.get('/api/reports', async (req, res) => {
   try {
     const authUser = await authenticateToken(req);
     if (!authUser) return res.status(403).json({ error: 'Auth required.' });
+
+    const baseQuery = `
+      SELECT r.id,
+        r.reporter_id,
+        reporter.name AS reporter_name,
+        r.reported_user_id,
+        r.reported_email,
+        r.message,
+        r.assigned_to,
+        assigned.name AS assigned_name,
+        r.assigned_at,
+        r.status,
+        r.status_notes,
+        r.updated_at,
+        r.created_at
+      FROM reports r
+      LEFT JOIN users reporter ON reporter.id = r.reporter_id
+      LEFT JOIN users assigned ON assigned.id = r.assigned_to`;
+
     if (authUser.role === 'admin') {
-      const result = await pool.query('SELECT * FROM reports ORDER BY created_at DESC');
+      const result = await pool.query(`${baseQuery} ORDER BY r.created_at DESC`);
       return res.json(result.rows);
     }
     if (authUser.role === 'patrol') {
-      const result = await pool.query('SELECT * FROM reports WHERE assigned_to = $1 ORDER BY created_at DESC', [authUser.id]);
+      const result = await pool.query(`${baseQuery} WHERE r.assigned_to = $1 ORDER BY r.created_at DESC`, [authUser.id]);
       return res.json(result.rows);
     }
     return res.status(403).json({ error: 'Access denied.' });
@@ -539,11 +581,52 @@ app.post('/api/reports/:id/assign', requireAdmin, async (req, res) => {
   const { patrolUserId } = req.body;
   if (!reportId || Number.isNaN(reportId)) return res.status(400).json({ error: 'Invalid report id.' });
   try {
-    await pool.query('UPDATE reports SET assigned_to = $1 WHERE id = $2', [patrolUserId || null, reportId]);
-    res.json({ message: 'Report assigned.' });
+    if (patrolUserId) {
+      const patrolRes = await pool.query('SELECT id FROM users WHERE id = $1 AND role = $2', [patrolUserId, 'patrol']);
+      if (patrolRes.rowCount === 0) {
+        return res.status(400).json({ error: 'Assigned patrol user must exist and have role patrol.' });
+      }
+    }
+    await pool.query(
+      'UPDATE reports SET assigned_to = $1, assigned_at = CASE WHEN $1 IS NOT NULL THEN NOW() ELSE assigned_at END, status = CASE WHEN $1 IS NOT NULL THEN $2 ELSE status END WHERE id = $3',
+      [patrolUserId || null, patrolUserId ? 'assigned' : null, reportId]
+    );
+    res.json({ message: 'Report updated.' });
   } catch (err) {
     console.error('Assign report error:', err.message);
     res.status(500).json({ error: 'Could not assign report.' });
+  }
+});
+
+app.put('/api/reports/:id/status', requireAuth, async (req, res) => {
+  const reportId = parseInt(req.params.id, 10);
+  const { status, notes } = req.body;
+  if (!reportId || Number.isNaN(reportId)) return res.status(400).json({ error: 'Invalid report id.' });
+  const allowedStatuses = ['new', 'assigned', 'in_progress', 'resolved', 'needs_info'];
+  if (!status || !allowedStatuses.includes(status)) {
+    return res.status(400).json({ error: 'Invalid status value.' });
+  }
+  try {
+    const reportRes = await pool.query('SELECT assigned_to FROM reports WHERE id = $1', [reportId]);
+    if (reportRes.rowCount === 0) {
+      return res.status(404).json({ error: 'Report not found.' });
+    }
+    const report = reportRes.rows[0];
+    if (req.user.role === 'patrol') {
+      if (!report.assigned_to || report.assigned_to !== req.user.id) {
+        return res.status(403).json({ error: 'You may only update complaints assigned to you.' });
+      }
+    } else if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied.' });
+    }
+    await pool.query(
+      'UPDATE reports SET status = $1, status_notes = $2, updated_at = NOW() WHERE id = $3',
+      [status, notes || null, reportId]
+    );
+    res.json({ message: 'Report status updated.' });
+  } catch (err) {
+    console.error('Update report status error:', err.message);
+    res.status(500).json({ error: 'Could not update report status.' });
   }
 });
 
