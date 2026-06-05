@@ -581,6 +581,33 @@ app.get('/api/posts', async (req, res) => {
   }
 });
 
+app.get('/api/community-stats', async (req, res) => {
+  try {
+    const [usersRes, patrolsRes, postsRes, reportsRes, recentUsersRes, recentPatrolsRes, recentReportsRes] = await Promise.all([
+      pool.query('SELECT COUNT(*)::int AS count FROM users'),
+      pool.query('SELECT COUNT(*)::int AS count FROM city_patrol'),
+      pool.query('SELECT COUNT(*)::int AS count FROM posts'),
+      pool.query('SELECT COUNT(*)::int AS count FROM reports'),
+      pool.query('SELECT id, name, role, created_at FROM users ORDER BY created_at DESC LIMIT 3'),
+      pool.query('SELECT id, name, email, joined_at FROM city_patrol ORDER BY joined_at DESC LIMIT 3'),
+      pool.query('SELECT id, reported_email, message, created_at FROM reports ORDER BY created_at DESC LIMIT 3'),
+    ]);
+
+    res.json({
+      totalUsers: usersRes.rows[0].count,
+      totalPatrolMembers: patrolsRes.rows[0].count,
+      totalPosts: postsRes.rows[0].count,
+      totalReports: reportsRes.rows[0].count,
+      recentMembers: recentUsersRes.rows,
+      recentPatrolMembers: recentPatrolsRes.rows,
+      recentReports: recentReportsRes.rows,
+    });
+  } catch (err) {
+    console.error('Community stats error:', err.message);
+    res.status(500).json({ error: 'Could not load community stats.' });
+  }
+});
+
 app.get('/api/posts/:id/comments', async (req, res) => {
   const postId = parseInt(req.params.id, 10);
   if (!postId || Number.isNaN(postId)) return res.status(400).json({ error: 'Invalid post id.' });

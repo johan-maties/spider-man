@@ -277,8 +277,26 @@ if (postForm) {
   });
 }
 
+async function loadCommunityStats() {
+  try {
+    const resp = await fetch('/api/community-stats');
+    if (!resp.ok) throw new Error('Failed to load stats');
+    const stats = await resp.json();
+    document.getElementById('statUsers').textContent = stats.totalUsers;
+    document.getElementById('statPatrols').textContent = stats.totalPatrolMembers;
+    document.getElementById('statPosts').textContent = stats.totalPosts;
+    document.getElementById('statReports').textContent = stats.totalReports;
+    document.getElementById('recentMembers').innerHTML = stats.recentMembers.length ? stats.recentMembers.map((m) => `<div>${escapeHtml(m.name)} (${m.role})</div>`).join('') : '<div>No recent members yet.</div>';
+    document.getElementById('recentPatrols').innerHTML = stats.recentPatrolMembers.length ? stats.recentPatrolMembers.map((p) => `<div>${escapeHtml(p.name)}</div>`).join('') : '<div>No new patrol members yet.</div>';
+    document.getElementById('recentReports').innerHTML = stats.recentReports.length ? stats.recentReports.map((r) => `<div>${escapeHtml(r.reported_email || 'Unknown')} - ${escapeHtml(r.message.substring(0, 60))}${r.message.length > 60 ? '...' : ''}</div>`).join('') : '<div>No reports yet.</div>';
+  } catch (err) {
+    console.error('Stats load error:', err);
+  }
+}
+
 // Initial load
 loadPosts();
+loadCommunityStats();
 
 updateThemeText();
 checkUserLogin();

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Spider-Man Fan Website</title>
+    <title>Spider-Man Neighborhood Community</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -28,59 +28,79 @@
   <main>
     <section class="hero">
       <div class="hero-copy">
-        <p class="eyebrow">New York City</p>
-        <h2>With great power comes great responsibility.</h2>
-        <p>Welcome to the official Spider-Man fan page. Discover Peter Parker, his powers, and his iconic adventures across the city skyline.</p>
-        <a href="#about" class="button">Explore the story</a>
+        <p class="eyebrow">Neighborhood Watch</p>
+        <h2>Building a stronger neighborhood, together.</h2>
+        <p>Welcome to the Spider-Man Neighborhood Community Platform — connect, share ideas, ask questions, and support your fellow neighbors.</p>
+        <a href="#community" class="button">Explore the community</a>
       </div>
       <div class="hero-visual">
         <div class="spider-silhouette"></div>
       </div>
     </section>
 
-    <section id="about" class="section about">
+    <section id="mission" class="section about">
       <div>
-        <h3>About Spider-Man</h3>
-        <p>Spider-Man is the alter ego of Peter Parker, a high school student turned superhero after being bitten by a radioactive spider.</p>
+        <h3>Community Mission</h3>
+        <p>This platform helps people connect, communicate, share ideas, and support each other across the neighborhood. It is a place for helpful discussions, safe collaboration, and friendly neighborhood energy.</p>
       </div>
+    </section>
+
+    <section id="stats" class="section about">
+      <h3>Community Statistics</h3>
       <div class="cards">
         <article class="card">
-          <h4>Origin</h4>
-          <p>Peter Parker gained spider-like powers and learned what it means to protect others.</p>
+          <h4>Total Users</h4>
+          <p id="statUsers">—</p>
         </article>
         <article class="card">
-          <h4>Powers</h4>
-          <p>Super strength, agility, spider-sense, and wall-crawling are among his amazing abilities.</p>
+          <h4>Total Patrol Members</h4>
+          <p id="statPatrols">—</p>
         </article>
         <article class="card">
-          <h4>Enemies</h4>
-          <p>From the Green Goblin to Doctor Octopus, Spider-Man faces some of the greatest villains in Marvel history.</p>
+          <h4>Total Posts</h4>
+          <p id="statPosts">—</p>
+        </article>
+        <article class="card">
+          <h4>Total Reports</h4>
+          <p id="statReports">—</p>
         </article>
       </div>
     </section>
 
-    <section class="section features">
-      <h3>Powers & Gear</h3>
+    <section id="activity" class="section features">
+      <h3>Neighborhood Activity</h3>
       <div class="feature-grid">
         <div class="feature-item">
-          <h4>Spider-Sense</h4>
-          <p>Detects danger with a unique sixth sense.</p>
+          <h4>New Members</h4>
+          <div id="recentMembers">Loading...</div>
         </div>
         <div class="feature-item">
-          <h4>Web Shooters</h4>
-          <p>Custom-built devices that shoot web fluid for swinging and traps.</p>
+          <h4>New Patrol Members</h4>
+          <div id="recentPatrols">Loading...</div>
         </div>
         <div class="feature-item">
-          <h4>Wall-Crawling</h4>
-          <p>Can cling to and scale vertical surfaces with ease.</p>
+          <h4>Recent Reports</h4>
+          <div id="recentReports">Loading...</div>
         </div>
+      </div>
+    </section>
+
+    <section id="guidelines" class="section contact">
+      <div>
+        <h3>Community Guidelines</h3>
+        <ul style="list-style: disc; padding-left: 1.25rem; color: var(--text);">
+          <li>Respect others and keep conversations kind.</li>
+          <li>No abusive language or harassment.</li>
+          <li>Share helpful ideas and support neighborhood growth.</li>
+          <li>Keep the community safe and welcoming.</li>
+        </ul>
       </div>
     </section>
 
     <section class="section contact">
       <div>
-        <h3>Join the City Patrol</h3>
-        <p>Want to build a fan site or learn JavaScript like Spider-Man? Enlist now and your message joins the patrol records.</p>
+        <h3>Join the Neighborhood Patrol</h3>
+        <p>Become part of the community network. Share your story, connect with neighbors, and help keep the neighborhood strong.</p>
       </div>
       <form id="contactForm">
         <label>
@@ -128,7 +148,7 @@
   </main>
 
   <footer class="site-footer">
-    <p>Made with web powers and friendly neighborhood energy.</p>
+    <p>Built for the neighborhood, with friendly Spider-Man energy.</p>
   </footer>
 
   <script src="script.js"></script>
