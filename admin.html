@@ -192,26 +192,7 @@
   </header>
 
   <main class="admin-container">
-    <div id="loginView">
-      <form class="login-form" id="loginForm">
-        <h2>Admin Access</h2>
-        <p style="color: var(--muted); margin-bottom: 1.5rem;">
-          Enter the patrol admin password to view City Patrol members.
-        </p>
-        <div id="loginError" class="error-msg"></div>
-        <input
-          type="password"
-          id="adminPassword"
-          placeholder="Admin password"
-          required
-          autofocus
-        />
-        <button type="submit">Access Dashboard</button>
-        <a href="/" class="back-link">← Back to website</a>
-      </form>
-    </div>
-
-    <div id="dashboardView" style="display: none;">
+    <div id="dashboardView">
       <div class="admin-header">
         <div>
           <h2 style="margin: 0; color: var(--text);">Admin Dashboard</h2>
@@ -229,6 +210,7 @@
                 <th>ID</th>
                 <th>Name</th>
                 <th>Email</th>
+                <th>Role</th>
                 <th>Joined Date</th>
               </tr>
             </thead>
@@ -268,29 +250,27 @@
   </footer>
 
   <script>
-    const loginView = document.getElementById('loginView');
     const dashboardView = document.getElementById('dashboardView');
-    const loginForm = document.getElementById('loginForm');
-    const loginError = document.getElementById('loginError');
     const usersTableBody = document.getElementById('usersTableBody');
     const patrolTableBody = document.getElementById('patrolTableBody');
     const userCount = document.getElementById('userCount');
     const memberCount = document.getElementById('memberCount');
     const logoutBtn = document.getElementById('logoutBtn');
 
-    const ADMIN_PASSWORD = 'spidersense';
+    const token = getToken();
+    const userRole = localStorage.getItem('userRole');
 
-    function showLogin() {
-      loginView.style.display = 'block';
-      dashboardView.style.display = 'none';
-      sessionStorage.removeItem('adminAuthenticated');
+    if (!token || userRole !== 'admin') {
+      document.body.innerHTML = '<main class="admin-container" style="text-align:center; color: var(--text);"><h2>Access Denied</h2><p>Admin access is required to view this page.</p><a href="/" style="color: var(--accent);">Return home</a></main>';
+    } else {
+      loadData();
     }
 
-    function showDashboard() {
-      loginView.style.display = 'none';
-      dashboardView.style.display = 'block';
-      sessionStorage.setItem('adminAuthenticated', 'true');
-      loadData();
+    function getToken() {
+      const localToken = localStorage.getItem('token');
+      if (localToken) return localToken;
+      const params = new URLSearchParams(window.location.search);
+      return params.get('token');
     }
 
     async function loadData() {
@@ -300,7 +280,12 @@
 
     async function loadUsers() {
       try {
-        const response = await fetch('/api/users?key=spidersense');
+        const response = await fetch('/api/users', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
         if (!response.ok) {
           throw new Error('Failed to fetch users');
         }
@@ -315,7 +300,12 @@
 
     async function loadPatrolMembers() {
       try {
-        const response = await fetch('/api/patrols?key=spidersense');
+        const response = await fetch('/api/patrols', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
         if (!response.ok) {
           throw new Error('Failed to fetch patrol members');
         }
@@ -353,6 +343,7 @@
           <td>${user.id}</td>
           <td>${escapeHtml(user.name)}</td>
           <td>${escapeHtml(user.email)}</td>
+          <td>${escapeHtml(user.role)}</td>
           <td>${joinedDate}</td>
         `;
         usersTableBody.appendChild(row);
@@ -402,28 +393,12 @@
       return text.replace(/[&<>"']/g, (m) => map[m]);
     }
 
-    loginForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const password = document.getElementById('adminPassword').value;
-
-      if (password === ADMIN_PASSWORD) {
-        loginError.textContent = '';
-        showDashboard();
-      } else {
-        loginError.textContent = 'Incorrect password. Try again.';
-        document.getElementById('adminPassword').value = '';
-      }
-    });
-
     logoutBtn.addEventListener('click', () => {
-      showLogin();
-      document.getElementById('adminPassword').value = '';
-      document.getElementById('adminPassword').focus();
+      localStorage.removeItem('token');
+      localStorage.removeItem('userName');
+      localStorage.removeItem('userRole');
+      window.location.href = '/';
     });
-
-    if (sessionStorage.getItem('adminAuthenticated') === 'true') {
-      showDashboard();
-    }
   </script>
 </body>
 </html>

@@ -199,6 +199,7 @@
         showStatus('Login successful! Welcome hero.', 'success');
         localStorage.setItem('token', data.token);
         localStorage.setItem('userName', data.user.name);
+        localStorage.setItem('userRole', data.user.role);
         setTimeout(() => {
           window.location.href = '/';
         }, 1500);

@@ -4,6 +4,7 @@ const contactForm = document.getElementById('contactForm');
 const formStatus = document.getElementById('formStatus');
 const userGreeting = document.getElementById('userGreeting');
 const logoutBtnHeader = document.getElementById('logoutBtnHeader');
+const adminLink = document.getElementById('adminLink');
 
 function updateThemeText() {
   themeToggle.textContent = body.classList.contains('light-theme') ? 'Dark Mode' : 'Light Mode';
@@ -12,21 +13,34 @@ function updateThemeText() {
 function checkUserLogin() {
   const token = localStorage.getItem('token');
   const userName = localStorage.getItem('userName');
-  
+  const userRole = localStorage.getItem('userRole');
+
   if (token && userName) {
     userGreeting.textContent = `Welcome, ${userName}!`;
     document.querySelector('a[href="/signup.html"]').style.display = 'none';
     document.querySelector('a[href="/login.html"]').style.display = 'none';
     logoutBtnHeader.style.display = 'inline-block';
+
+    if (userRole === 'admin') {
+      adminLink.style.display = 'inline-block';
+      adminLink.href = `/admin.html?token=${encodeURIComponent(token)}`;
+    } else {
+      adminLink.style.display = 'none';
+      adminLink.removeAttribute('href');
+    }
   } else {
     userGreeting.textContent = '';
     logoutBtnHeader.style.display = 'none';
+    adminLink.style.display = 'none';
+    document.querySelector('a[href="/signup.html"]').style.display = 'inline-block';
+    document.querySelector('a[href="/login.html"]').style.display = 'inline-block';
   }
 }
 
 logoutBtnHeader.addEventListener('click', () => {
   localStorage.removeItem('token');
   localStorage.removeItem('userName');
+  localStorage.removeItem('userRole');
   checkUserLogin();
   window.location.href = '/';
 });
