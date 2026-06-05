@@ -74,6 +74,35 @@ async function initializeDatabase() {
     )`
   );
 
+  await pool.query(
+    `CREATE TABLE IF NOT EXISTS posts (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )`
+  );
+
+  await pool.query(
+    `CREATE TABLE IF NOT EXISTS comments (
+      id SERIAL PRIMARY KEY,
+      post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      body TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )`
+  );
+
+  await pool.query(
+    `CREATE TABLE IF NOT EXISTS post_likes (
+      post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      PRIMARY KEY (post_id, user_id)
+    )`
+  );
+
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_until TIMESTAMPTZ`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_reason TEXT`);
 
@@ -135,6 +164,18 @@ async function authenticateToken(req) {
   );
 
   return result.rowCount > 0 ? result.rows[0] : null;
+}
+
+async function requireAuth(req, res, next) {
+  try {
+    const user = await authenticateToken(req);
+    if (!user) return res.status(401).json({ error: 'Authentication required.' });
+    req.user = user;
+    next();
+  } catch (err) {
+    console.error('Auth middleware error:', err.message);
+    res.status(500).json({ error: 'Server error.' });
+  }
 }
 
 async function requireAdmin(req, res, next) {
@@ -495,6 +536,79 @@ app.get('/api/patrols', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('Patrol lookup error:', err.message);
     res.status(500).json({ error: 'Unable to retrieve patrol records.' });
+  }
+});
+
+// Community posts
+app.post('/api/posts', requireAuth, async (req, res) => {
+  const { title, body } = req.body;
+  if (!title || !body) return res.status(400).json({ error: 'Title and body are required.' });
+  try {
+    const result = await pool.query('INSERT INTO posts (user_id, title, body) VALUES ($1, $2, $3) RETURNING id, created_at', [req.user.id, title, body]);
+    res.json({ message: 'Post created.', postId: result.rows[0].id, created_at: result.rows[0].created_at });
+  } catch (err) {
+    console.error('Create post error:', err.message);
+    res.status(500).json({ error: 'Could not create post.' });
+  }
+});
+
+app.get('/api/posts', async (req, res) => {
+  try {
+    const posts = await pool.query(
+      `SELECT p.id, p.title, p.body, p.created_at, u.id AS user_id, u.name AS user_name, u.email AS user_email,
+        (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS like_count,
+        (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count
+       FROM posts p
+       JOIN users u ON p.user_id = u.id
+       ORDER BY p.created_at DESC LIMIT 200`
+    );
+    res.json(posts.rows);
+  } catch (err) {
+    console.error('List posts error:', err.message);
+    res.status(500).json({ error: 'Could not list posts.' });
+  }
+});
+
+app.get('/api/posts/:id/comments', async (req, res) => {
+  const postId = parseInt(req.params.id, 10);
+  if (!postId || Number.isNaN(postId)) return res.status(400).json({ error: 'Invalid post id.' });
+  try {
+    const comments = await pool.query('SELECT c.id, c.body, c.created_at, u.id AS user_id, u.name AS user_name FROM comments c JOIN users u ON c.user_id = u.id WHERE c.post_id = $1 ORDER BY c.created_at ASC', [postId]);
+    res.json(comments.rows);
+  } catch (err) {
+    console.error('Comments lookup error:', err.message);
+    res.status(500).json({ error: 'Could not fetch comments.' });
+  }
+});
+
+app.post('/api/posts/:id/comments', requireAuth, async (req, res) => {
+  const postId = parseInt(req.params.id, 10);
+  const { body } = req.body;
+  if (!postId || Number.isNaN(postId) || !body) return res.status(400).json({ error: 'Invalid request.' });
+  try {
+    const result = await pool.query('INSERT INTO comments (post_id, user_id, body) VALUES ($1, $2, $3) RETURNING id, created_at', [postId, req.user.id, body]);
+    res.json({ message: 'Comment added.', id: result.rows[0].id, created_at: result.rows[0].created_at });
+  } catch (err) {
+    console.error('Add comment error:', err.message);
+    res.status(500).json({ error: 'Could not add comment.' });
+  }
+});
+
+// Like/unlike toggle
+app.post('/api/posts/:id/like', requireAuth, async (req, res) => {
+  const postId = parseInt(req.params.id, 10);
+  if (!postId || Number.isNaN(postId)) return res.status(400).json({ error: 'Invalid post id.' });
+  try {
+    const exists = await pool.query('SELECT 1 FROM post_likes WHERE post_id = $1 AND user_id = $2', [postId, req.user.id]);
+    if (exists.rowCount > 0) {
+      await pool.query('DELETE FROM post_likes WHERE post_id = $1 AND user_id = $2', [postId, req.user.id]);
+      return res.json({ message: 'Unliked' });
+    }
+    await pool.query('INSERT INTO post_likes (post_id, user_id) VALUES ($1, $2)', [postId, req.user.id]);
+    res.json({ message: 'Liked' });
+  } catch (err) {
+    console.error('Like toggle error:', err.message);
+    res.status(500).json({ error: 'Could not toggle like.' });
   }
 });
 

@@ -99,6 +99,32 @@
         <button type="submit" class="button">Join Patrol</button>
       </form>
     </section>
+
+    <section id="community" class="section community">
+      <div>
+        <h3>Neighborhood Community</h3>
+        <p>Share updates, ask questions, and discuss with fellow neighborhood members.</p>
+
+        <div id="postFormContainer" style="max-width:700px; margin-top:1rem;">
+          <form id="postForm">
+            <label>
+              Title
+              <input type="text" id="postTitle" name="postTitle" placeholder="Short title" required />
+            </label>
+            <label>
+              Post
+              <textarea id="postBody" name="postBody" rows="4" placeholder="Share your thought..." required></textarea>
+            </label>
+            <p id="postStatus" class="form-status" aria-live="polite"></p>
+            <button type="submit" class="button">Post</button>
+          </form>
+        </div>
+
+        <div id="postsFeed" style="max-width:900px; margin-top:2rem;">
+          <p id="feedStatus" style="color:var(--muted)">Loading posts...</p>
+        </div>
+      </div>
+    </section>
   </main>
 
   <footer class="site-footer">

@@ -107,5 +107,145 @@ async function submitPatrolForm(event) {
 }
 
 contactForm.addEventListener('submit', submitPatrolForm);
+
+// Community posts script
+const postForm = document.getElementById('postForm');
+const postStatus = document.getElementById('postStatus');
+const postsFeed = document.getElementById('postsFeed');
+
+async function loadPosts() {
+  try {
+    const resp = await fetch('/api/posts');
+    if (!resp.ok) throw new Error('Failed to load posts');
+    const posts = await resp.json();
+    renderPosts(posts);
+  } catch (err) {
+    console.error('Load posts error:', err);
+    if (postsFeed) postsFeed.innerHTML = '<p style="color:var(--muted)">Unable to load posts.</p>';
+  }
+}
+
+function timeAgo(dateString) {
+  const d = new Date(dateString);
+  return d.toLocaleString();
+}
+
+function renderPosts(posts) {
+  if (!postsFeed) return;
+  if (!posts || posts.length === 0) {
+    postsFeed.innerHTML = '<p style="color:var(--muted)">No posts yet.</p>';
+    return;
+  }
+
+  postsFeed.innerHTML = '';
+  posts.forEach((p) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.marginBottom = '1rem';
+    card.innerHTML = `
+      <h4 style="margin:0 0 0.25rem 0">${escapeHtml(p.title)}</h4>
+      <div style="color:var(--muted); font-size:0.9rem; margin-bottom:0.5rem">by ${escapeHtml(p.user_name)} • ${timeAgo(p.created_at)}</div>
+      <p style="margin:0 0 0.5rem 0">${escapeHtml(p.body)}</p>
+      <div style="display:flex; gap:0.5rem; align-items:center;">
+        <button class="like-btn" data-post-id="${p.id}">Like (${p.like_count || 0})</button>
+        <button class="comments-btn" data-post-id="${p.id}">Comments (${p.comment_count || 0})</button>
+      </div>
+      <div class="comments-container" id="comments-${p.id}" style="margin-top:0.75rem"></div>
+    `;
+    postsFeed.appendChild(card);
+
+    const likeBtn = card.querySelector('.like-btn');
+    const commentsBtn = card.querySelector('.comments-btn');
+    const commentsContainer = card.querySelector('.comments-container');
+
+    likeBtn.addEventListener('click', async () => {
+      const token = localStorage.getItem('token');
+      if (!token) { alert('Log in to like posts.'); return; }
+      likeBtn.disabled = true;
+      try {
+        const r = await fetch(`/api/posts/${p.id}/like`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+        if (!r.ok) { alert('Unable to toggle like'); return; }
+        await loadPosts();
+      } catch (err) {
+        console.error('Like error:', err);
+        alert('Error toggling like');
+      } finally { likeBtn.disabled = false; }
+    });
+
+    commentsBtn.addEventListener('click', async () => {
+      if (commentsContainer.innerHTML.trim() !== '') { commentsContainer.innerHTML = ''; return; }
+      commentsContainer.innerHTML = '<p style="color:var(--muted)">Loading comments...</p>';
+      try {
+        const resp = await fetch(`/api/posts/${p.id}/comments`);
+        if (!resp.ok) throw new Error('Failed to load comments');
+        const comments = await resp.json();
+        commentsContainer.innerHTML = '';
+        const list = document.createElement('div');
+        comments.forEach((c) => {
+          const el = document.createElement('div');
+          el.style.padding = '0.5rem 0';
+          el.innerHTML = `<strong>${escapeHtml(c.user_name)}</strong> <span style="color:var(--muted); font-size:0.85rem">${timeAgo(c.created_at)}</span><div>${escapeHtml(c.body)}</div>`;
+          list.appendChild(el);
+        });
+        commentsContainer.appendChild(list);
+
+        const token = localStorage.getItem('token');
+        if (token) {
+          const form = document.createElement('form');
+          form.style.marginTop = '0.5rem';
+          form.innerHTML = `<input type="text" name="comment" placeholder="Write a comment..." style="width:70%; padding:0.5rem" required /> <button type="submit">Comment</button>`;
+          form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const body = form.elements.comment.value.trim();
+            if (!body) return;
+            try {
+              const r = await fetch(`/api/posts/${p.id}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ body }) });
+              if (!r.ok) { alert('Unable to post comment'); return; }
+              form.elements.comment.value = '';
+              // refresh comments
+              commentsContainer.innerHTML = '';
+              commentsContainer.innerHTML = '<p style="color:var(--muted)">Loading comments...</p>';
+              const resp2 = await fetch(`/api/posts/${p.id}/comments`);
+              const comments2 = await resp2.json();
+              commentsContainer.innerHTML = '';
+              const list2 = document.createElement('div');
+              comments2.forEach((c) => {
+                const el = document.createElement('div');
+                el.style.padding = '0.5rem 0';
+                el.innerHTML = `<strong>${escapeHtml(c.user_name)}</strong> <span style="color:var(--muted); font-size:0.85rem">${timeAgo(c.created_at)}</span><div>${escapeHtml(c.body)}</div>`;
+                list2.appendChild(el);
+              });
+              commentsContainer.appendChild(list2);
+            } catch (err) { console.error('Comment error:', err); alert('Error posting comment'); }
+          });
+          commentsContainer.appendChild(form);
+        }
+      } catch (err) { console.error('Comments load error:', err); commentsContainer.innerHTML = '<p style="color:var(--muted)">Could not load comments.</p>'; }
+    });
+  });
+}
+
+if (postForm) {
+  postForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = document.getElementById('postTitle').value.trim();
+    const bodyText = document.getElementById('postBody').value.trim();
+    if (!title || !bodyText) { postStatus.textContent = 'Please add title and content.'; postStatus.className = 'form-status error'; return; }
+    const token = localStorage.getItem('token');
+    if (!token) { postStatus.textContent = 'Log in to post.'; postStatus.className = 'form-status error'; return; }
+    postStatus.textContent = 'Posting...';
+    try {
+      const resp = await fetch('/api/posts', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ title, body: bodyText }) });
+      if (!resp.ok) { const d = await resp.json().catch(()=>({})); throw new Error(d.error || 'Post failed'); }
+      postStatus.textContent = 'Post created.'; postStatus.className = 'form-status success';
+      postForm.reset();
+      await loadPosts();
+    } catch (err) { postStatus.textContent = err.message; postStatus.className = 'form-status error'; }
+  });
+}
+
+// Initial load
+loadPosts();
+
 updateThemeText();
 checkUserLogin();
