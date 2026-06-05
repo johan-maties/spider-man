@@ -7,155 +7,198 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="site-header">
-    <div class="logo">
-      <span class="logo-icon">🕷️</span>
+  <header class="site-header" id="home">
+    <div class="brand">
+      <div class="brand-mark">🕷️</div>
       <div>
-        <h1>Spider-Man</h1>
-        <p>Friendly neighborhood hero</p>
+        <p class="eyebrow">Friendly Neighborhood</p>
+        <h1>Spider-Man Community</h1>
       </div>
     </div>
-    <div style="display: flex; gap: 1rem; align-items: center;">
-      <div id="userGreeting" style="color: var(--muted); font-size: 0.9rem;"></div>
-      <a id="adminLink" href="#" class="theme-toggle" style="display: none; text-decoration: none; white-space: nowrap;">Admin Patrol</a>
-      <a href="/signup.html" class="theme-toggle" style="text-decoration: none; display: inline-block;">Sign Up</a>
-      <a href="/login.html" class="theme-toggle" style="text-decoration: none; display: inline-block;">Log In</a>
-      <button id="logoutBtnHeader" class="theme-toggle" style="display: none; cursor: pointer;">Logout</button>
+
+    <nav class="main-nav">
+      <a href="#home" class="nav-link active">Home</a>
+      <a href="#community" class="nav-link">Community</a>
+      <a href="#patrol" class="nav-link role-admin-patrol">Patrol</a>
+      <a href="#complaints" class="nav-link role-admin">Complaints</a>
+      <a href="/profile.html" class="nav-link">Profile</a>
+      <a href="#settings" class="nav-link">Settings</a>
+    </nav>
+
+    <div class="header-actions">
+      <button id="notificationBell" class="icon-button notification-bell" aria-label="Open notifications">
+        <span class="bell-icon">🔔</span>
+        <span class="badge" id="notificationCount">0</span>
+      </button>
       <button id="themeToggle" class="theme-toggle">Dark Mode</button>
+      <span id="userGreeting" class="user-greeting"></span>
+      <a href="/signup.html" id="signupLink" class="action-link">Sign Up</a>
+      <a href="/login.html" id="loginLink" class="action-link">Log In</a>
+      <button id="logoutBtnHeader" class="action-pill" style="display:none;">Logout</button>
     </div>
   </header>
 
+  <div id="notificationsPanel" class="notifications-panel" hidden>
+    <div class="notifications-header">
+      <h4>Notifications</h4>
+      <button id="closeNotifications" class="plain-button">Close</button>
+    </div>
+    <div id="notificationsList" class="notifications-list">
+      <p class="empty-state">No new notifications.</p>
+    </div>
+  </div>
+
   <main>
-    <section class="hero">
+    <section class="hero hero-panel">
       <div class="hero-copy">
-        <p class="eyebrow">Neighborhood Watch</p>
-        <h2>Building a stronger neighborhood, together.</h2>
-        <p>Welcome to the Spider-Man Neighborhood Community Platform — connect, share ideas, ask questions, and support your fellow neighbors.</p>
-        <a href="#community" class="button">Explore the community</a>
+        <p class="eyebrow">Community Hub</p>
+        <h2>Connect, share, and protect your friendly neighborhood.</h2>
+        <p class="hero-text">A modern hub for neighbors, patrol members, and admins to collaborate, share updates, and keep the community safe.</p>
+        <div class="hero-actions">
+          <a href="#community" class="button button-primary">Open the Feed</a>
+          <a href="/profile.html" class="button button-secondary">View Profile</a>
+        </div>
       </div>
       <div class="hero-visual">
-        <div class="spider-silhouette"></div>
-      </div>
-    </section>
-
-    <section id="mission" class="section about">
-      <div>
-        <h3>Community Mission</h3>
-        <p>This platform helps people connect, communicate, share ideas, and support each other across the neighborhood. It is a place for helpful discussions, safe collaboration, and friendly neighborhood energy.</p>
-      </div>
-    </section>
-
-    <section id="stats" class="section about">
-      <h3>Community Statistics</h3>
-      <div class="cards">
-        <article class="card">
-          <h4>Total Posts</h4>
-          <p id="statPosts">—</p>
-        </article>
-        <article class="card" id="userStatsCard" style="display:none;">
-          <h4>Total Users</h4>
-          <p id="statUsers">—</p>
-        </article>
-        <article class="card" id="patrolStatsCard" style="display:none;">
-          <h4>Total Patrol Members</h4>
-          <p id="statPatrols">—</p>
-        </article>
-        <article class="card" id="reportStatsCard" style="display:none;">
-          <h4>Total Reports</h4>
-          <p id="statReports">—</p>
-        </article>
-      </div>
-    </section>
-
-    <section id="activity" class="section features">
-      <h3>Neighborhood Activity</h3>
-      <div class="feature-grid">
-        <div class="feature-item">
-          <h4>New Members</h4>
-          <div id="recentMembers">Loading...</div>
-        </div>
-        <div class="feature-item">
-          <h4>New Patrol Members</h4>
-          <div id="recentPatrols">Loading...</div>
-        </div>
-        <div class="feature-item" id="recentReportsCard" style="display:none;">
-          <h4>Recent Reports</h4>
-          <div id="recentReports">Loading...</div>
+        <div class="hero-glow"></div>
+        <div class="hero-card">
+          <div class="hero-card-icon">🕸️</div>
+          <h3>Neighborhood Pulse</h3>
+          <p>Live posts, patrol updates, and friendly activity all in one place.</p>
         </div>
       </div>
     </section>
 
-    <section id="patrolComplaintsSection" class="section about" style="display:none;">
-      <div>
+    <section id="stats" class="section stats-section">
+      <div class="section-header">
+        <h3>Community Overview</h3>
+        <p>Quick metrics for active members, patrol participation, and community engagement.</p>
+      </div>
+      <div class="stats-grid">
+        <article class="stat-card">
+          <span class="stat-icon">👥</span>
+          <div>
+            <p>Total Users</p>
+            <h3 id="statUsers">—</h3>
+          </div>
+        </article>
+        <article class="stat-card">
+          <span class="stat-icon">🛡️</span>
+          <div>
+            <p>Total Patrol Members</p>
+            <h3 id="statPatrols">—</h3>
+          </div>
+        </article>
+        <article class="stat-card">
+          <span class="stat-icon">✍️</span>
+          <div>
+            <p>Total Posts</p>
+            <h3 id="statPosts">—</h3>
+          </div>
+        </article>
+        <article class="stat-card role-admin" id="reportStatsCard" style="display:none;">
+          <span class="stat-icon">📌</span>
+          <div>
+            <p>Total Reports</p>
+            <h3 id="statReports">—</h3>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="community" class="section community-section">
+      <div class="section-header">
+        <div>
+          <h3>Community Feed</h3>
+          <p>Share updates, ask questions, and respond to neighbors.</p>
+        </div>
+        <div class="small-info">Everyone can post, like, and comment.</div>
+      </div>
+
+      <div class="feed-layout">
+        <div class="feed-main">
+          <article class="post-box card">
+            <div class="post-box-header">
+              <div>
+                <p class="eyebrow">What&apos;s on your mind?</p>
+                <h4>New post</h4>
+              </div>
+            </div>
+            <form id="postForm" class="post-form">
+              <input type="text" id="postTitle" name="postTitle" placeholder="Write a headline" required />
+              <textarea id="postBody" name="postBody" rows="5" placeholder="Share a community update..." required></textarea>
+              <div class="post-form-actions">
+                <div id="postStatus" class="form-status" aria-live="polite"></div>
+                <button type="submit" class="button button-primary">Post</button>
+              </div>
+            </form>
+          </article>
+
+          <div id="postsFeed" class="posts-feed">
+            <p id="feedStatus" class="empty-state">Loading posts...</p>
+          </div>
+        </div>
+
+        <aside class="sidebar-panel">
+          <article class="info-card card">
+            <h4>Need ideas?</h4>
+            <p>Share updates about neighborhood safety, volunteer patrols, or local events.</p>
+          </article>
+          <article class="info-card card role-patrol" style="display:none;" id="patrolQuickCard">
+            <h4>Patrol tools</h4>
+            <p>Your assigned complaints and patrol coordination tools appear here.</p>
+          </article>
+          <article class="info-card card role-admin" style="display:none;" id="adminQuickCard">
+            <h4>Admin controls</h4>
+            <p>Manage reports, user roles, and patrol status from the dashboard.</p>
+          </article>
+        </aside>
+      </div>
+    </section>
+
+    <section id="patrol" class="section patrol-section role-patrol" style="display:none;">
+      <div class="section-header">
         <h3>Assigned Complaints</h3>
-        <div id="assignedComplaintsContainer"><p style="color:var(--muted)">Loading assigned complaints...</p></div>
+        <p>Your active patrol items are shown here.</p>
+      </div>
+      <div id="assignedComplaintsContainer" class="cards-row">
+        <p class="empty-state">Loading assigned complaints...</p>
       </div>
     </section>
 
-    <section id="guidelines" class="section contact">
-      <div>
-        <h3>Community Guidelines</h3>
-        <ul style="list-style: disc; padding-left: 1.25rem; color: var(--text);">
-          <li>Respect others and keep conversations kind.</li>
-          <li>No abusive language or harassment.</li>
-          <li>Share helpful ideas and support neighborhood growth.</li>
-          <li>Keep the community safe and welcoming.</li>
-        </ul>
+    <section id="complaints" class="section complaints-section role-admin" style="display:none;">
+      <div class="section-header">
+        <h3>Complaint Dashboard</h3>
+        <p>Admin-only overview of complaints and moderation activity.</p>
+      </div>
+      <div class="cards-row">
+        <article class="status-card card">
+          <h4>New reports</h4>
+          <p id="recentReports">Loading...</p>
+        </article>
+        <article class="status-card card">
+          <h4>Pending review</h4>
+          <p>Review assigned issues in the admin dashboard.</p>
+        </article>
       </div>
     </section>
 
-    <section class="section contact">
-      <div>
-        <h3>Join the Neighborhood Patrol</h3>
-        <p>Become part of the community network. Share your story, connect with neighbors, and help keep the neighborhood strong.</p>
+    <section id="settings" class="section settings-section">
+      <div class="section-header">
+        <h3>Friendly Neighborhood</h3>
+        <p>Stay connected, stay safe, and keep the community moving forward.</p>
       </div>
-      <form id="contactForm">
-        <label>
-          Name
-          <input type="text" name="name" placeholder="Your name" required />
-        </label>
-        <label>
-          Email
-          <input type="email" name="email" placeholder="Your email" required />
-        </label>
-        <label>
-          Message
-          <textarea name="message" rows="4" placeholder="Why do you want to join?" required></textarea>
-        </label>
-        <p id="formStatus" class="form-status" aria-live="polite"></p>
-        <button type="submit" class="button">Join Patrol</button>
-      </form>
-    </section>
-
-    <section id="community" class="section community">
-      <div>
-        <h3>Neighborhood Community</h3>
-        <p>Share updates, ask questions, and discuss with fellow neighborhood members.</p>
-
-        <div id="postFormContainer" style="max-width:700px; margin-top:1rem;">
-          <form id="postForm">
-            <label>
-              Title
-              <input type="text" id="postTitle" name="postTitle" placeholder="Short title" required />
-            </label>
-            <label>
-              Post
-              <textarea id="postBody" name="postBody" rows="4" placeholder="Share your thought..." required></textarea>
-            </label>
-            <p id="postStatus" class="form-status" aria-live="polite"></p>
-            <button type="submit" class="button">Post</button>
-          </form>
-        </div>
-
-        <div id="postsFeed" style="max-width:900px; margin-top:2rem;">
-          <p id="feedStatus" style="color:var(--muted)">Loading posts...</p>
-        </div>
+      <div class="cards-row">
+        <article class="info-card card">
+          <h4>Community values</h4>
+          <p>Be kind, be helpful, and keep the neighborhood welcoming for everyone.</p>
+        </article>
       </div>
     </section>
   </main>
 
   <footer class="site-footer">
-    <p>Built for the neighborhood, with friendly Spider-Man energy.</p>
+    <p>Spider-Man Neighborhood Community — built for the friendly neighborhood.</p>
   </footer>
 
   <script src="script.js"></script>

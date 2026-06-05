@@ -182,12 +182,23 @@
 </head>
 <body>
   <header class="site-header">
-    <div class="logo">
-      <span class="logo-icon">🕷️</span>
+    <div class="brand">
+      <div class="brand-mark">🕷️</div>
       <div>
-        <h1>Spider-Man</h1>
-        <p>Patrol Admin Dashboard</p>
+        <p class="eyebrow">Friendly Neighborhood</p>
+        <h1>Spider-Man Admin</h1>
       </div>
+    </div>
+    <nav class="main-nav">
+      <a href="index.html" class="nav-link">Home</a>
+      <a href="index.html#community" class="nav-link">Community</a>
+      <a href="index.html#patrol" class="nav-link role-admin-patrol">Patrol</a>
+      <a href="index.html#complaints" class="nav-link role-admin">Complaints</a>
+      <a href="/profile.html" class="nav-link">Profile</a>
+      <a href="index.html#settings" class="nav-link">Settings</a>
+    </nav>
+    <div class="header-actions">
+      <button id="logoutBtn" class="action-pill">Logout</button>
     </div>
   </header>
 
@@ -296,7 +307,7 @@
 
     async function checkAdminSession() {
       try {
-        const resp = await fetch('/api/me');
+        const resp = await fetch('/api/me', { credentials: 'same-origin' });
         if (!resp.ok) {
           denyAccess();
           return;
@@ -308,9 +319,6 @@
           return;
         }
 
-        localStorage.setItem('userRole', data.user.role);
-        localStorage.setItem('userName', data.user.name);
-        localStorage.setItem('userEmail', data.user.email);
         loadData();
       } catch (err) {
         console.error('Admin session check failed:', err);
@@ -359,7 +367,7 @@
 
     async function loadUsers() {
       try {
-const response = await fetch('/api/users?onlyRegistered=true');
+        const response = await fetch('/api/users?onlyRegistered=true', { credentials: 'same-origin' });
 
         if (!response.ok) {
           throw new Error('Failed to fetch users');
@@ -375,7 +383,7 @@ const response = await fetch('/api/users?onlyRegistered=true');
 
     async function searchAll(query) {
       try {
-        const response = await fetch('/api/search?q=' + encodeURIComponent(query));
+        const response = await fetch('/api/search?q=' + encodeURIComponent(query), { credentials: 'same-origin' });
         if (!response.ok) throw new Error('Search failed');
         const data = await response.json();
         displayUsers(data.users || []);
@@ -389,7 +397,7 @@ const response = await fetch('/api/users?onlyRegistered=true');
 
     async function loadPatrolMembers() {
       try {
-const response = await fetch('/api/patrols');
+        const response = await fetch('/api/patrols', { credentials: 'same-origin' });
 
         if (!response.ok) {
           throw new Error('Failed to fetch patrol members');

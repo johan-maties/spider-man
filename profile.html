@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profile - Spider-Man Community</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand">
+      <div class="brand-mark">🕷️</div>
+      <div>
+        <p class="eyebrow">Friendly Neighborhood</p>
+        <h1>Spider-Man Community</h1>
+      </div>
+    </div>
+    <nav class="main-nav">
+      <a href="index.html" class="nav-link">Home</a>
+      <a href="index.html#community" class="nav-link">Community</a>
+      <a href="index.html#patrol" class="nav-link role-admin-patrol">Patrol</a>
+      <a href="index.html#complaints" class="nav-link role-admin">Complaints</a>
+      <a href="/profile.html" class="nav-link active">Profile</a>
+      <a href="index.html#settings" class="nav-link">Settings</a>
+    </nav>
+    <div class="header-actions">
+      <a href="/signup.html" class="action-link">Sign Up</a>
+      <a href="/login.html" class="action-link">Log In</a>
+      <button id="logoutBtnHeader" class="action-pill" style="display:none;">Logout</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="section hero-panel">
+      <div class="hero-copy">
+        <p class="eyebrow">My Profile</p>
+        <h2>Your neighborhood profile</h2>
+        <p class="hero-text">View your role, membership details, and community activity in one place.</p>
+      </div>
+      <div class="hero-card">
+        <div class="hero-card-icon">👤</div>
+        <h3>Community Member</h3>
+        <p>Stay connected with local updates and share what matters most to your neighborhood.</p>
+      </div>
+    </section>
+
+    <section class="section stats-section">
+      <div class="section-header">
+        <h3>Your Details</h3>
+        <p>Quick access to your profile and contributions.</p>
+      </div>
+      <div class="stats-grid">
+        <article class="stat-card">
+          <span class="stat-icon">🙍</span>
+          <div>
+            <p>Name</p>
+            <h3 id="profileName">—</h3>
+          </div>
+        </article>
+        <article class="stat-card">
+          <span class="stat-icon">✉️</span>
+          <div>
+            <p>Email</p>
+            <h3 id="profileEmail">—</h3>
+          </div>
+        </article>
+        <article class="stat-card">
+          <span class="stat-icon">🧭</span>
+          <div>
+            <p>Role</p>
+            <h3 id="profileRole">—</h3>
+          </div>
+        </article>
+        <article class="stat-card">
+          <span class="stat-icon">✍️</span>
+          <div>
+            <p>Posts</p>
+            <h3 id="profilePosts">—</h3>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section community-section">
+      <div class="section-header">
+        <h3>Your Posts</h3>
+        <p>See the posts you've shared in the community.</p>
+      </div>
+      <div id="myPostsFeed" class="posts-feed">
+        <p class="empty-state">Loading your posts...</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Profile information is loaded from your session and community records.</p>
+  </footer>
+
+  <script>
+    async function fetchCurrentUser() {
+      try {
+        const resp = await fetch('/api/me', { credentials: 'same-origin' });
+        if (!resp.ok) {
+          window.location.href = '/login.html';
+          return null;
+        }
+        return (await resp.json()).user;
+      } catch (err) {
+        console.error(err);
+        window.location.href = '/login.html';
+        return null;
+      }
+    }
+
+    function escapeHtml(text) {
+      const span = document.createElement('span');
+      span.textContent = text || '';
+      return span.innerHTML;
+    }
+
+    function updateRoleVisibility(role) {
+      document.querySelectorAll('.role-admin').forEach((el) => {
+        el.style.display = role === 'admin' ? '' : 'none';
+      });
+      document.querySelectorAll('.role-patrol').forEach((el) => {
+        el.style.display = role === 'patrol' ? '' : 'none';
+      });
+      document.querySelectorAll('.role-admin-patrol').forEach((el) => {
+        el.style.display = role === 'admin' || role === 'patrol' ? '' : 'none';
+      });
+    }
+
+    async function loadProfile() {
+      const user = await fetchCurrentUser();
+      if (!user) return;
+
+      updateRoleVisibility(user.role);
+      document.querySelectorAll('.action-link').forEach((link) => {
+        link.style.display = 'none';
+      });
+      document.getElementById('logoutBtnHeader').style.display = 'inline-flex';
+
+      document.getElementById('profileName').textContent = user.name;
+      document.getElementById('profileEmail').textContent = user.email;
+      document.getElementById('profileRole').textContent = user.role;
+
+      const resp = await fetch('/api/posts', { credentials: 'same-origin' });
+      if (!resp.ok) {
+        document.getElementById('myPostsFeed').innerHTML = '<p class="empty-state">Unable to load your posts.</p>';
+        return;
+      }
+      const posts = await resp.json();
+      const mine = posts.filter((post) => post.user_name === user.name);
+      document.getElementById('profilePosts').textContent = mine.length;
+      const container = document.getElementById('myPostsFeed');
+      if (!mine.length) {
+        container.innerHTML = '<p class="empty-state">You have not posted yet.</p>';
+        return;
+      }
+      container.innerHTML = mine.map((p) => `
+        <article class="post-card">
+          <div class="post-meta">
+            <h4>${escapeHtml(p.title)}</h4>
+            <span>${new Date(p.created_at).toLocaleString()}</span>
+          </div>
+          <p>${escapeHtml(p.body)}</p>
+        </article>
+      `).join('');
+    }
+
+    document.getElementById('logoutBtnHeader').addEventListener('click', async () => {
+      await fetch('/api/logout', { method: 'POST', credentials: 'same-origin' });
+      window.location.href = '/';
+    });
+
+    (async () => {
+      await loadProfile();
+    })();
+  </script>
+</body>
+</html>

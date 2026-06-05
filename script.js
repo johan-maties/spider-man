@@ -1,19 +1,26 @@
 const themeToggle = document.getElementById('themeToggle');
-const body = document.body;
-const contactForm = document.getElementById('contactForm');
-const formStatus = document.getElementById('formStatus');
 const userGreeting = document.getElementById('userGreeting');
 const logoutBtnHeader = document.getElementById('logoutBtnHeader');
-const adminLink = document.getElementById('adminLink');
-const activitySection = document.getElementById('activity');
-const patrolComplaintsSection = document.getElementById('patrolComplaintsSection');
-const userStatsCard = document.getElementById('userStatsCard');
-const patrolStatsCard = document.getElementById('patrolStatsCard');
+const signupLink = document.getElementById('signupLink');
+const loginLink = document.getElementById('loginLink');
+const notificationBell = document.getElementById('notificationBell');
+const notificationCount = document.getElementById('notificationCount');
+const notificationsPanel = document.getElementById('notificationsPanel');
+const notificationsList = document.getElementById('notificationsList');
+const closeNotifications = document.getElementById('closeNotifications');
+const postForm = document.getElementById('postForm');
+const postStatus = document.getElementById('postStatus');
+const postsFeed = document.getElementById('postsFeed');
+const assignedComplaintsContainer = document.getElementById('assignedComplaintsContainer');
+const patrolQuickCard = document.getElementById('patrolQuickCard');
+const adminQuickCard = document.getElementById('adminQuickCard');
 const reportStatsCard = document.getElementById('reportStatsCard');
 const recentReportsCard = document.getElementById('recentReportsCard');
 
-// Toast helper
-function showToast(message, type = 'info', timeout = 4000) {
+let currentUser = null;
+let notifications = [];
+
+function showToast(message, type = 'info', timeout = 3800) {
   let container = document.getElementById('toastContainer');
   if (!container) {
     container = document.createElement('div');
@@ -28,234 +35,25 @@ function showToast(message, type = 'info', timeout = 4000) {
   const el = document.createElement('div');
   el.textContent = message;
   el.style.marginTop = '0.5rem';
-  el.style.padding = '0.6rem 0.9rem';
-  el.style.borderRadius = '8px';
-  el.style.color = 'white';
-  el.style.minWidth = '180px';
-  el.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-  if (type === 'error') el.style.background = '#ef4444';
-  else if (type === 'success') el.style.background = '#10b981';
-  else el.style.background = 'rgba(55,65,81,0.95)';
+  el.style.padding = '0.75rem 1rem';
+  el.style.borderRadius = '0.85rem';
+  el.style.color = '#fff';
+  el.style.background = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : 'rgba(55,65,81,0.95)';
+  el.style.boxShadow = '0 12px 30px rgba(0,0,0,0.2)';
+  el.style.opacity = '1';
+  el.style.transition = 'opacity 300ms ease';
 
   container.appendChild(el);
   setTimeout(() => {
-    el.style.transition = 'opacity 300ms';
     el.style.opacity = '0';
     setTimeout(() => el.remove(), 300);
   }, timeout);
 }
 
-function updateThemeText() {
-  themeToggle.textContent = body.classList.contains('light-theme') ? 'Dark Mode' : 'Light Mode';
-}
-
-function clearSession() {
-  localStorage.removeItem('token');
-  localStorage.removeItem('userName');
-  localStorage.removeItem('userRole');
-  localStorage.removeItem('userEmail');
-}
-
-function checkUserLogin() {
-  const token = localStorage.getItem('token');
-  const userName = localStorage.getItem('userName');
-  const userRole = localStorage.getItem('userRole');
-
-  if (token && userName) {
-    userGreeting.textContent = `Welcome, ${userName}!`;
-    document.querySelector('a[href="/signup.html"]').style.display = 'none';
-    document.querySelector('a[href="/login.html"]').style.display = 'none';
-    logoutBtnHeader.style.display = 'inline-block';
-
-    if (userRole === 'admin') {
-      adminLink.style.display = 'inline-block';
-      adminLink.removeAttribute('href');
-      adminLink.href = '/admin.html';
-    } else {
-      adminLink.style.display = 'none';
-      adminLink.removeAttribute('href');
-    }
-  } else {
-    userGreeting.textContent = '';
-    logoutBtnHeader.style.display = 'none';
-    adminLink.style.display = 'none';
-    document.querySelector('a[href="/signup.html"]').style.display = 'inline-block';
-    document.querySelector('a[href="/login.html"]').style.display = 'inline-block';
-  }
-
-  setDashboardVisibility(userRole);
-  if (userRole === 'patrol') {
-    loadAssignedComplaints();
-  }
-}
-
-async function initializeSession() {
-  try {
-    const resp = await fetch('/api/me');
-    if (!resp.ok) {
-      clearSession();
-      checkUserLogin();
-      return;
-    }
-    const data = await resp.json();
-    localStorage.setItem('userName', data.user.name);
-    localStorage.setItem('userRole', data.user.role);
-    localStorage.setItem('userEmail', data.user.email);
-    checkUserLogin();
-  } catch (err) {
-    console.error('Session sync error:', err);
-    clearSession();
-    checkUserLogin();
-  }
-}
-
-window.addEventListener('storage', (event) => {
-  if (['token', 'userRole', 'userName', 'userEmail'].includes(event.key)) {
-    if (event.newValue !== event.oldValue) {
-      showToast('Session changed in another tab. UI is updating.', 'info');
-      initializeSession();
-    }
-  }
-});
-
-function setDashboardVisibility(userRole) {
-  const isAdmin = userRole === 'admin';
-  const isPatrol = userRole === 'patrol';
-
-  if (userStatsCard) userStatsCard.style.display = isAdmin ? 'block' : 'none';
-  if (patrolStatsCard) patrolStatsCard.style.display = isAdmin ? 'block' : 'none';
-  if (reportStatsCard) reportStatsCard.style.display = 'none';
-  if (recentReportsCard) recentReportsCard.style.display = 'none';
-  if (activitySection) activitySection.style.display = isAdmin ? 'block' : 'none';
-  if (patrolComplaintsSection) patrolComplaintsSection.style.display = isPatrol ? 'block' : 'none';
-}
-
-async function loadAssignedComplaints() {
-  const container = document.getElementById('assignedComplaintsContainer');
-  if (!container) return;
-
-  const token = localStorage.getItem('token');
-  if (!token) {
-    container.innerHTML = '<p style="color:var(--muted)">Log in to view assigned complaints.</p>';
-    return;
-  }
-
-  try {
-    const resp = await fetch('/api/reports', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!resp.ok) throw new Error('Failed to load assigned complaints');
-
-    const reports = await resp.json();
-    if (!reports.length) {
-      container.innerHTML = '<p style="color:var(--muted)">No complaints are currently assigned to you.</p>';
-      return;
-    }
-
-    container.innerHTML = reports
-      .map((r) => `
-        <div style="margin-bottom:0.75rem; padding:0.85rem; background:rgba(255,255,255,0.04); border-radius:0.75rem;">
-          <strong>${escapeHtml(r.reported_email || 'Unknown')}</strong>
-          <div style="color:var(--muted); margin:0.35rem 0;">${escapeHtml(r.message || '')}</div>
-          <div style="font-size:0.85rem; color:var(--muted);">Received ${timeAgo(r.created_at)}</div>
-        </div>
-      `)
-      .join('');
-  } catch (err) {
-    console.error('Assigned complaints load error:', err);
-    container.innerHTML = '<p style="color:var(--muted)">Unable to load assigned complaints.</p>';
-  }
-}
-
-logoutBtnHeader.addEventListener('click', async () => {
-  clearSession();
-  try {
-    await fetch('/api/logout', { method: 'POST' });
-  } catch (err) {
-    console.error('Logout request failed:', err);
-  }
-  checkUserLogin();
-  window.location.href = '/';
-});
-
-themeToggle.addEventListener('click', () => {
-  body.classList.toggle('light-theme');
-  if (body.classList.contains('light-theme')) {
-    body.style.setProperty('--bg', '#f8f8fc');
-    body.style.setProperty('--bg-alt', '#edf0f9');
-    body.style.setProperty('--text', '#111827');
-    body.style.setProperty('--muted', '#6b7280');
-    body.style.setProperty('--card', 'rgba(255,255,255,0.8)');
-    body.style.setProperty('--accent-soft', 'rgba(226,49,49,0.14)');
-    themeToggle.textContent = 'Dark Mode';
-  } else {
-    body.style.removeProperty('--bg');
-    body.style.removeProperty('--bg-alt');
-    body.style.removeProperty('--text');
-    body.style.removeProperty('--muted');
-    body.style.removeProperty('--card');
-    body.style.removeProperty('--accent-soft');
-    themeToggle.textContent = 'Light Mode';
-  }
-});
-
-async function submitPatrolForm(event) {
-  event.preventDefault();
-
-  const name = contactForm.elements.name.value.trim();
-  const email = contactForm.elements.email.value.trim();
-  const message = contactForm.elements.message.value.trim();
-
-  if (!name || !email || !message) {
-    formStatus.textContent = 'Please fill in all fields.';
-    formStatus.className = 'form-status error';
-    return;
-  }
-
-  formStatus.textContent = 'Enrolling you into the City Patrol...';
-  formStatus.className = 'form-status';
-
-  try {
-    const response = await fetch('/api/join', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ name, email, message }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Unable to join the patrol.');
-    }
-
-    const data = await response.json();
-    formStatus.textContent = data.message || 'Welcome to the City Patrol!';
-    formStatus.className = 'form-status success';
-    contactForm.reset();
-  } catch (error) {
-    formStatus.textContent = error.message;
-    formStatus.className = 'form-status error';
-  }
-}
-
-contactForm.addEventListener('submit', submitPatrolForm);
-
-// Community posts script
-const postForm = document.getElementById('postForm');
-const postStatus = document.getElementById('postStatus');
-const postsFeed = document.getElementById('postsFeed');
-
-async function loadPosts() {
-  try {
-    const resp = await fetch('/api/posts');
-    if (!resp.ok) throw new Error('Failed to load posts');
-    const posts = await resp.json();
-    renderPosts(posts);
-  } catch (err) {
-    console.error('Load posts error:', err);
-    if (postsFeed) postsFeed.innerHTML = '<p style="color:var(--muted)">Unable to load posts.</p>';
-  }
+function escapeHtml(text) {
+  const span = document.createElement('span');
+  span.textContent = text || '';
+  return span.innerHTML;
 }
 
 function timeAgo(dateString) {
@@ -263,97 +61,253 @@ function timeAgo(dateString) {
   return d.toLocaleString();
 }
 
+function updateRoleVisibility(role) {
+  document.querySelectorAll('.role-admin').forEach((el) => {
+    el.style.display = role === 'admin' ? '' : 'none';
+  });
+  document.querySelectorAll('.role-patrol').forEach((el) => {
+    el.style.display = role === 'patrol' ? '' : 'none';
+  });
+  document.querySelectorAll('.role-admin-patrol').forEach((el) => {
+    el.style.display = role === 'admin' || role === 'patrol' ? '' : 'none';
+  });
+}
+
+function updateHeader(user) {
+  if (user) {
+    userGreeting.textContent = `Welcome, ${user.name}`;
+    userGreeting.style.display = 'inline-flex';
+    logoutBtnHeader.style.display = 'inline-flex';
+    signupLink.style.display = 'none';
+    loginLink.style.display = 'none';
+  } else {
+    userGreeting.textContent = '';
+    logoutBtnHeader.style.display = 'none';
+    signupLink.style.display = 'inline-flex';
+    loginLink.style.display = 'inline-flex';
+  }
+}
+
+async function fetchCurrentUser() {
+  try {
+    const resp = await fetch('/api/me', { credentials: 'same-origin' });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    return data.user;
+  } catch (err) {
+    console.error('fetchCurrentUser error', err);
+    return null;
+  }
+}
+
+async function initializeSession() {
+  currentUser = await fetchCurrentUser();
+  updateHeader(currentUser);
+  updateRoleVisibility(currentUser?.role || '');
+  await loadCommunityStats();
+  await loadPosts();
+  if (currentUser?.role === 'patrol') {
+    loadAssignedComplaints();
+  }
+  renderNotifications();
+}
+
+function setActiveNav() {
+  const hash = window.location.hash || '#home';
+  document.querySelectorAll('.nav-link').forEach((link) => {
+    link.classList.toggle('active', link.getAttribute('href') === hash);
+  });
+}
+
+function renderNotifications() {
+  if (!notificationsList || !notificationCount) return;
+  notificationCount.textContent = notifications.length ? `${notifications.length}` : '0';
+  notificationsList.innerHTML = notifications.length
+    ? notifications.map((note) => `<div class="notification-item"><p>${escapeHtml(note.message)}</p></div>`).join('')
+    : '<p class="empty-state">No new notifications.</p>';
+}
+
+function pushNotification(message) {
+  notifications.unshift({ message, date: new Date().toISOString() });
+  if (notifications.length > 6) notifications.pop();
+  renderNotifications();
+}
+
+function toggleNotifications() {
+  if (!notificationsPanel) return;
+  notificationsPanel.hidden = !notificationsPanel.hidden;
+}
+
+if (notificationBell) {
+  notificationBell.addEventListener('click', toggleNotifications);
+}
+
+if (closeNotifications) {
+  closeNotifications.addEventListener('click', () => {
+    if (notificationsPanel) notificationsPanel.hidden = true;
+  });
+}
+
+if (logoutBtnHeader) {
+  logoutBtnHeader.addEventListener('click', async () => {
+    try {
+      await fetch('/api/logout', { method: 'POST', credentials: 'same-origin' });
+    } catch (error) {
+      console.error('Logout failed', error);
+    }
+    currentUser = null;
+    updateHeader(null);
+    updateRoleVisibility('');
+    window.location.href = '/';
+  });
+}
+
+if (themeToggle) {
+  themeToggle.addEventListener('click', () => {
+    document.body.classList.toggle('light-theme');
+    themeToggle.textContent = document.body.classList.contains('light-theme') ? 'Dark Mode' : 'Light Mode';
+  });
+}
+
+async function loadPosts() {
+  if (!postsFeed) return;
+  try {
+    const resp = await fetch('/api/posts', { credentials: 'same-origin' });
+    if (!resp.ok) throw new Error('Failed to load posts');
+    const posts = await resp.json();
+    renderPosts(posts);
+  } catch (err) {
+    console.error('Load posts error:', err);
+    postsFeed.innerHTML = '<p class="empty-state">Unable to load posts.</p>';
+  }
+}
+
 function renderPosts(posts) {
   if (!postsFeed) return;
   if (!posts || posts.length === 0) {
-    postsFeed.innerHTML = '<p style="color:var(--muted)">No data found.</p>';
+    postsFeed.innerHTML = '<p class="empty-state">No posts to show yet.</p>';
     return;
   }
 
   postsFeed.innerHTML = '';
   posts.forEach((p) => {
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.style.marginBottom = '1rem';
+    const card = document.createElement('article');
+    card.className = 'post-card';
     card.innerHTML = `
-      <h4 style="margin:0 0 0.25rem 0">${escapeHtml(p.title)}</h4>
-      <div style="color:var(--muted); font-size:0.9rem; margin-bottom:0.5rem">by ${escapeHtml(p.user_name)} • ${timeAgo(p.created_at)}</div>
-      <p style="margin:0 0 0.5rem 0">${escapeHtml(p.body)}</p>
-      <div style="display:flex; gap:0.5rem; align-items:center;">
-        <button class="like-btn" data-post-id="${p.id}">Like (${p.like_count || 0})</button>
-        <button class="comments-btn" data-post-id="${p.id}">Comments (${p.comment_count || 0})</button>
+      <div class="post-meta">
+        <div>
+          <h4>${escapeHtml(p.title)}</h4>
+          <span>by ${escapeHtml(p.user_name)} • ${timeAgo(p.created_at)}</span>
+        </div>
       </div>
-      <div class="comments-container" id="comments-${p.id}" style="margin-top:0.75rem"></div>
+      <p>${escapeHtml(p.body)}</p>
+      <div class="post-actions">
+        <button class="post-button like-btn" data-post-id="${p.id}">Like (${p.like_count || 0})</button>
+        <button class="post-button comments-btn" data-post-id="${p.id}">Comments (${p.comment_count || 0})</button>
+      </div>
+      <div class="comments-container" id="comments-${p.id}"></div>
     `;
     postsFeed.appendChild(card);
 
     const likeBtn = card.querySelector('.like-btn');
     const commentsBtn = card.querySelector('.comments-btn');
-    const commentsContainer = card.querySelector('.comments-container');
 
-    likeBtn.addEventListener('click', async () => {
-      const token = localStorage.getItem('token');
-      if (!token) { showToast('Log in to like posts.', 'error'); return; }
-      likeBtn.disabled = true;
+    likeBtn?.addEventListener('click', async (event) => {
+      const button = event.currentTarget;
+      button.disabled = true;
       try {
-        const r = await fetch(`/api/posts/${p.id}/like`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
-        if (!r.ok) { showToast('Unable to toggle like', 'error'); return; }
+        const resp = await fetch(`/api/posts/${p.id}/like`, {
+          method: 'POST',
+          credentials: 'same-origin',
+        });
+        if (!resp.ok) {
+          showToast('Unable to toggle like.', 'error');
+          return;
+        }
         await loadPosts();
-      } catch (err) {
-        console.error('Like error:', err);
-        showToast('Error toggling like', 'error');
-      } finally { likeBtn.disabled = false; }
+      } catch (error) {
+        console.error('Like error:', error);
+        showToast('Error toggling like.', 'error');
+      } finally {
+        button.disabled = false;
+      }
     });
 
-    commentsBtn.addEventListener('click', async () => {
-      if (commentsContainer.innerHTML.trim() !== '') { commentsContainer.innerHTML = ''; return; }
-      commentsContainer.innerHTML = '<p style="color:var(--muted)">Loading comments...</p>';
+    commentsBtn?.addEventListener('click', async () => {
+      const commentsContainer = card.querySelector('.comments-container');
+      if (!commentsContainer) return;
+      if (commentsContainer.innerHTML.trim() !== '') {
+        commentsContainer.innerHTML = '';
+        return;
+      }
+      commentsContainer.innerHTML = '<p class="empty-state">Loading comments...</p>';
       try {
-        const resp = await fetch(`/api/posts/${p.id}/comments`);
+        const resp = await fetch(`/api/posts/${p.id}/comments`, { credentials: 'same-origin' });
         if (!resp.ok) throw new Error('Failed to load comments');
         const comments = await resp.json();
         commentsContainer.innerHTML = '';
+
         const list = document.createElement('div');
         comments.forEach((c) => {
           const el = document.createElement('div');
-          el.style.padding = '0.5rem 0';
-          el.innerHTML = `<strong>${escapeHtml(c.user_name)}</strong> <span style="color:var(--muted); font-size:0.85rem">${timeAgo(c.created_at)}</span><div>${escapeHtml(c.body)}</div>`;
+          el.className = 'comment-item';
+          el.innerHTML = `
+            <strong>${escapeHtml(c.user_name)}</strong>
+            <span style="color:var(--muted); font-size:0.85rem;">${timeAgo(c.created_at)}</span>
+            <div>${escapeHtml(c.body)}</div>
+          `;
           list.appendChild(el);
         });
         commentsContainer.appendChild(list);
 
-        const token = localStorage.getItem('token');
-        if (token) {
-          const form = document.createElement('form');
-          form.style.marginTop = '0.5rem';
-          form.innerHTML = `<input type="text" name="comment" placeholder="Write a comment..." style="width:70%; padding:0.5rem" required /> <button type="submit">Comment</button>`;
-          form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const body = form.elements.comment.value.trim();
-            if (!body) return;
-            try {
-              const r = await fetch(`/api/posts/${p.id}/comments`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ body }) });
-              if (!r.ok) { showToast('Unable to post comment', 'error'); return; }
-              form.elements.comment.value = '';
-              // refresh comments
-              commentsContainer.innerHTML = '';
-              commentsContainer.innerHTML = '<p style="color:var(--muted)">Loading comments...</p>';
-              const resp2 = await fetch(`/api/posts/${p.id}/comments`);
-              const comments2 = await resp2.json();
-              commentsContainer.innerHTML = '';
-              const list2 = document.createElement('div');
-              comments2.forEach((c) => {
-                const el = document.createElement('div');
-                el.style.padding = '0.5rem 0';
-                el.innerHTML = `<strong>${escapeHtml(c.user_name)}</strong> <span style="color:var(--muted); font-size:0.85rem">${timeAgo(c.created_at)}</span><div>${escapeHtml(c.body)}</div>`;
-                list2.appendChild(el);
-              });
-              commentsContainer.appendChild(list2);
-            } catch (err) { console.error('Comment error:', err); showToast('Error posting comment', 'error'); }
-          });
-          commentsContainer.appendChild(form);
-        }
-      } catch (err) { console.error('Comments load error:', err); commentsContainer.innerHTML = '<p style="color:var(--muted)">Could not load comments.</p>'; }
+        const commentForm = document.createElement('form');
+        commentForm.style.marginTop = '1rem';
+        commentForm.innerHTML = `
+          <input type="text" name="comment" placeholder="Write a comment..." required style="width:100%; padding:0.95rem 1rem; border-radius:16px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.05); color:var(--text);" />
+          <button type="submit" class="post-button" style="margin-top:0.8rem;">Comment</button>
+        `;
+        commentForm.addEventListener('submit', async (event) => {
+          event.preventDefault();
+          const bodyText = commentForm.elements.comment.value.trim();
+          if (!bodyText) return;
+          try {
+            const postResp = await fetch(`/api/posts/${p.id}/comments`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'same-origin',
+              body: JSON.stringify({ body: bodyText }),
+            });
+            if (!postResp.ok) {
+              showToast('Unable to post comment.', 'error');
+              return;
+            }
+            commentForm.elements.comment.value = '';
+            const refreshed = await fetch(`/api/posts/${p.id}/comments`, { credentials: 'same-origin' });
+            const refreshedComments = await refreshed.json();
+            commentsContainer.innerHTML = '';
+            const updatedList = document.createElement('div');
+            refreshedComments.forEach((c) => {
+              const el = document.createElement('div');
+              el.className = 'comment-item';
+              el.innerHTML = `
+                <strong>${escapeHtml(c.user_name)}</strong>
+                <span style="color:var(--muted); font-size:0.85rem;">${timeAgo(c.created_at)}</span>
+                <div>${escapeHtml(c.body)}</div>
+              `;
+              updatedList.appendChild(el);
+            });
+            commentsContainer.appendChild(updatedList);
+            commentsContainer.appendChild(commentForm);
+          } catch (error) {
+            console.error('Comment error:', error);
+            showToast('Error posting comment.', 'error');
+          }
+        });
+        commentsContainer.appendChild(commentForm);
+      } catch (error) {
+        console.error('Comments load error:', error);
+        commentsContainer.innerHTML = '<p class="empty-state">Could not load comments.</p>';
+      }
     });
   });
 }
@@ -363,61 +317,102 @@ if (postForm) {
     e.preventDefault();
     const title = document.getElementById('postTitle').value.trim();
     const bodyText = document.getElementById('postBody').value.trim();
-    if (!title || !bodyText) { postStatus.textContent = 'Please add title and content.'; postStatus.className = 'form-status error'; return; }
-    const token = localStorage.getItem('token');
-    if (!token) { postStatus.textContent = 'Log in to post.'; postStatus.className = 'form-status error'; return; }
+    if (!title || !bodyText) {
+      postStatus.textContent = 'Please add title and content.';
+      postStatus.className = 'form-status error';
+      return;
+    }
+
     postStatus.textContent = 'Posting...';
+    postStatus.className = 'form-status';
     try {
-      const resp = await fetch('/api/posts', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ title, body: bodyText }) });
-      if (!resp.ok) { const d = await resp.json().catch(()=>({})); throw new Error(d.error || 'Post failed'); }
-      postStatus.textContent = 'Post created.'; postStatus.className = 'form-status success';
+      const resp = await fetch('/api/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ title, body: bodyText }),
+      });
+      if (!resp.ok) {
+        const errorData = await resp.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Post failed');
+      }
+      postStatus.textContent = 'Post created.';
+      postStatus.className = 'form-status success';
       postForm.reset();
       await loadPosts();
-    } catch (err) { postStatus.textContent = err.message; postStatus.className = 'form-status error'; }
+    } catch (error) {
+      postStatus.textContent = error.message;
+      postStatus.className = 'form-status error';
+    }
   });
 }
 
 async function loadCommunityStats() {
   try {
-    const token = localStorage.getItem('token');
-    const userRole = localStorage.getItem('userRole');
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    const resp = await fetch('/api/community-stats', { headers });
+    const resp = await fetch('/api/community-stats', { credentials: 'same-origin' });
     if (!resp.ok) throw new Error('Failed to load stats');
     const stats = await resp.json();
 
     document.getElementById('statPosts').textContent = stats.totalPosts != null ? stats.totalPosts : '0';
+    document.getElementById('statUsers').textContent = stats.totalUsers != null ? stats.totalUsers : '0';
+    document.getElementById('statPatrols').textContent = stats.totalPatrolMembers != null ? stats.totalPatrolMembers : '0';
+    document.getElementById('statReports').textContent = stats.totalReports != null ? stats.totalReports : '0';
 
-    if (userRole === 'admin') {
-      if (userStatsCard) userStatsCard.style.display = 'block';
-      if (patrolStatsCard) patrolStatsCard.style.display = 'block';
-      if (reportStatsCard) reportStatsCard.style.display = 'block';
-      if (recentReportsCard) recentReportsCard.style.display = 'block';
+    document.getElementById('recentMembers').innerHTML = stats.recentMembers && stats.recentMembers.length
+      ? stats.recentMembers.map((m) => `<div>${escapeHtml(m.name)} (${escapeHtml(m.role)})</div>`).join('')
+      : '<div>No recent members</div>';
+    document.getElementById('recentPatrols').innerHTML = stats.recentPatrolMembers && stats.recentPatrolMembers.length
+      ? stats.recentPatrolMembers.map((p) => `<div>${escapeHtml(p.name)}</div>`).join('')
+      : '<div>No recent patrol members</div>';
+    document.getElementById('recentReports').innerHTML = stats.recentReports && stats.recentReports.length
+      ? stats.recentReports.map((r) => `<div>${escapeHtml(r.reported_email || 'Unknown')} - ${escapeHtml((r.message || '').substring(0, 60))}${(r.message || '').length > 60 ? '...' : ''}</div>`).join('')
+      : '<div>No recent reports</div>';
 
-      document.getElementById('statUsers').textContent = stats.totalUsers != null ? stats.totalUsers : '0';
-      document.getElementById('statPatrols').textContent = stats.totalPatrolMembers != null ? stats.totalPatrolMembers : '0';
-      document.getElementById('statReports').textContent = stats.totalReports != null ? stats.totalReports : '0';
-      document.getElementById('recentReports').innerHTML = stats.recentReports && stats.recentReports.length
-        ? stats.recentReports.map((r) => `<div>${escapeHtml(r.reported_email || 'Unknown')} - ${escapeHtml((r.message || '').substring(0, 60))}${(r.message || '').length > 60 ? '...' : ''}</div>`).join('')
-        : '<div>No data found</div>';
-      document.getElementById('recentMembers').innerHTML = stats.recentMembers && stats.recentMembers.length
-        ? stats.recentMembers.map((m) => `<div>${escapeHtml(m.name)} (${escapeHtml(m.role)})</div>`).join('')
-        : '<div>No data found</div>';
-      document.getElementById('recentPatrols').innerHTML = stats.recentPatrolMembers && stats.recentPatrolMembers.length
-        ? stats.recentPatrolMembers.map((p) => `<div>${escapeHtml(p.name)}</div>`).join('')
-        : '<div>No data found</div>';
-    } else {
-      if (userStatsCard) userStatsCard.style.display = 'none';
-      if (patrolStatsCard) patrolStatsCard.style.display = 'none';
-      if (reportStatsCard) reportStatsCard.style.display = 'none';
-      if (recentReportsCard) recentReportsCard.style.display = 'none';
+    if (currentUser?.role === 'admin') {
+      reportStatsCard.style.display = 'block';
+      recentReportsCard.style.display = 'block';
+      pushNotification(`Admin alert: ${stats.totalReports || 0} total reports.`);
     }
-  } catch (err) {
-    console.error('Stats load error:', err);
+
+    if (currentUser?.role === 'patrol') {
+      patrolQuickCard.style.display = 'block';
+      pushNotification(`Patrol update: ${stats.totalReports || 0} reports to review.`);
+    }
+  } catch (error) {
+    console.error('Stats load error:', error);
   }
 }
 
-// Initial load
+async function loadAssignedComplaints() {
+  if (!assignedComplaintsContainer) return;
+  try {
+    const resp = await fetch('/api/reports', { credentials: 'same-origin' });
+    if (!resp.ok) throw new Error('Failed to load assigned complaints');
+    const reports = await resp.json();
+    if (!reports.length) {
+      assignedComplaintsContainer.innerHTML = '<p class="empty-state">No complaints are currently assigned to you.</p>';
+      return;
+    }
+
+    assignedComplaintsContainer.innerHTML = reports.map((r) => `
+      <article class="card">
+        <h4>${escapeHtml(r.reported_email || 'Unknown')}</h4>
+        <p>${escapeHtml(r.message || 'No details provided.')}</p>
+        <p class="empty-state">Received ${timeAgo(r.created_at)}</p>
+      </article>
+    `).join('');
+  } catch (error) {
+    console.error('Assigned complaints load error:', error);
+    assignedComplaintsContainer.innerHTML = '<p class="empty-state">Unable to load assigned complaints.</p>';
+  }
+}
+
+window.addEventListener('hashchange', setActiveNav);
+window.addEventListener('storage', initializeSession);
+
+initializeSession();
+setActiveNav();
+
 initializeSession();
 loadPosts();
 loadCommunityStats();
