@@ -5,6 +5,12 @@ const formStatus = document.getElementById('formStatus');
 const userGreeting = document.getElementById('userGreeting');
 const logoutBtnHeader = document.getElementById('logoutBtnHeader');
 const adminLink = document.getElementById('adminLink');
+const activitySection = document.getElementById('activity');
+const patrolComplaintsSection = document.getElementById('patrolComplaintsSection');
+const userStatsCard = document.getElementById('userStatsCard');
+const patrolStatsCard = document.getElementById('patrolStatsCard');
+const reportStatsCard = document.getElementById('reportStatsCard');
+const recentReportsCard = document.getElementById('recentReportsCard');
 
 // Toast helper
 function showToast(message, type = 'info', timeout = 4000) {
@@ -76,13 +82,15 @@ function checkUserLogin() {
 }
 
 function setDashboardVisibility(userRole) {
-  const reportStatsCard = document.getElementById('reportStatsCard');
-  const recentReportsCard = document.getElementById('recentReportsCard');
-  const patrolComplaintsSection = document.getElementById('patrolComplaintsSection');
+  const isAdmin = userRole === 'admin';
+  const isPatrol = userRole === 'patrol';
 
-  if (reportStatsCard) reportStatsCard.style.display = userRole === 'admin' ? 'block' : 'none';
-  if (recentReportsCard) recentReportsCard.style.display = userRole === 'admin' ? 'block' : 'none';
-  if (patrolComplaintsSection) patrolComplaintsSection.style.display = userRole === 'patrol' ? 'block' : 'none';
+  if (userStatsCard) userStatsCard.style.display = isAdmin ? 'block' : 'none';
+  if (patrolStatsCard) patrolStatsCard.style.display = isAdmin ? 'block' : 'none';
+  if (reportStatsCard) reportStatsCard.style.display = 'none';
+  if (recentReportsCard) recentReportsCard.style.display = 'none';
+  if (activitySection) activitySection.style.display = isAdmin ? 'block' : 'none';
+  if (patrolComplaintsSection) patrolComplaintsSection.style.display = isPatrol ? 'block' : 'none';
 }
 
 async function loadAssignedComplaints() {
@@ -218,7 +226,7 @@ function timeAgo(dateString) {
 function renderPosts(posts) {
   if (!postsFeed) return;
   if (!posts || posts.length === 0) {
-    postsFeed.innerHTML = '<p style="color:var(--muted)">No posts yet.</p>';
+    postsFeed.innerHTML = '<p style="color:var(--muted)">No data found.</p>';
     return;
   }
 
@@ -332,33 +340,38 @@ if (postForm) {
 async function loadCommunityStats() {
   try {
     const token = localStorage.getItem('token');
+    const userRole = localStorage.getItem('userRole');
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
     const resp = await fetch('/api/community-stats', { headers });
     if (!resp.ok) throw new Error('Failed to load stats');
     const stats = await resp.json();
 
-    document.getElementById('statUsers').textContent = stats.totalUsers;
-    document.getElementById('statPatrols').textContent = stats.totalPatrolMembers;
-    document.getElementById('statPosts').textContent = stats.totalPosts;
+    document.getElementById('statPosts').textContent = stats.totalPosts != null ? stats.totalPosts : '0';
 
-    const reportStatsCard = document.getElementById('reportStatsCard');
-    const recentReportsCard = document.getElementById('recentReportsCard');
-    const hasReportStats = stats.totalReports != null && Array.isArray(stats.recentReports);
-
-    if (hasReportStats) {
+    if (userRole === 'admin') {
+      if (userStatsCard) userStatsCard.style.display = 'block';
+      if (patrolStatsCard) patrolStatsCard.style.display = 'block';
       if (reportStatsCard) reportStatsCard.style.display = 'block';
       if (recentReportsCard) recentReportsCard.style.display = 'block';
-      document.getElementById('statReports').textContent = stats.totalReports;
-      document.getElementById('recentReports').innerHTML = stats.recentReports.length
+
+      document.getElementById('statUsers').textContent = stats.totalUsers != null ? stats.totalUsers : '0';
+      document.getElementById('statPatrols').textContent = stats.totalPatrolMembers != null ? stats.totalPatrolMembers : '0';
+      document.getElementById('statReports').textContent = stats.totalReports != null ? stats.totalReports : '0';
+      document.getElementById('recentReports').innerHTML = stats.recentReports && stats.recentReports.length
         ? stats.recentReports.map((r) => `<div>${escapeHtml(r.reported_email || 'Unknown')} - ${escapeHtml((r.message || '').substring(0, 60))}${(r.message || '').length > 60 ? '...' : ''}</div>`).join('')
-        : '<div>No reports yet.</div>';
+        : '<div>No data found</div>';
+      document.getElementById('recentMembers').innerHTML = stats.recentMembers && stats.recentMembers.length
+        ? stats.recentMembers.map((m) => `<div>${escapeHtml(m.name)} (${escapeHtml(m.role)})</div>`).join('')
+        : '<div>No data found</div>';
+      document.getElementById('recentPatrols').innerHTML = stats.recentPatrolMembers && stats.recentPatrolMembers.length
+        ? stats.recentPatrolMembers.map((p) => `<div>${escapeHtml(p.name)}</div>`).join('')
+        : '<div>No data found</div>';
     } else {
+      if (userStatsCard) userStatsCard.style.display = 'none';
+      if (patrolStatsCard) patrolStatsCard.style.display = 'none';
       if (reportStatsCard) reportStatsCard.style.display = 'none';
       if (recentReportsCard) recentReportsCard.style.display = 'none';
     }
-
-    document.getElementById('recentMembers').innerHTML = stats.recentMembers.length ? stats.recentMembers.map((m) => `<div>${escapeHtml(m.name)} (${m.role})</div>`).join('') : '<div>No recent members yet.</div>';
-    document.getElementById('recentPatrols').innerHTML = stats.recentPatrolMembers.length ? stats.recentPatrolMembers.map((p) => `<div>${escapeHtml(p.name)}</div>`).join('') : '<div>No new patrol members yet.</div>';
   } catch (err) {
     console.error('Stats load error:', err);
   }

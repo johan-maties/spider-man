@@ -586,10 +586,10 @@ app.get('/api/community-stats', async (req, res) => {
     const authUser = await authenticateToken(req);
 
     const [usersRes, patrolsRes, postsRes, recentUsersRes, recentPatrolsRes] = await Promise.all([
-      pool.query('SELECT COUNT(*)::int AS count FROM users'),
+      pool.query("SELECT COUNT(*)::int AS count FROM users WHERE role = 'user'"),
       pool.query('SELECT COUNT(*)::int AS count FROM city_patrol'),
       pool.query('SELECT COUNT(*)::int AS count FROM posts'),
-      pool.query('SELECT id, name, role, created_at FROM users ORDER BY created_at DESC LIMIT 3'),
+      pool.query("SELECT id, name, role, created_at FROM users WHERE role = 'user' ORDER BY created_at DESC LIMIT 3"),
       pool.query('SELECT id, name, email, joined_at FROM city_patrol ORDER BY joined_at DESC LIMIT 3'),
     ]);
 

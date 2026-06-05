@@ -393,7 +393,7 @@
       usersTableBody.innerHTML = '';
 
       if (users.length === 0) {
-        usersTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--muted);">No users registered yet</td></tr>';
+        usersTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--muted);">No data found</td></tr>';
         userCount.textContent = '0 users';
         return;
       }
@@ -512,7 +512,7 @@
       patrolTableBody.innerHTML = '';
 
       if (patrols.length === 0) {
-        patrolTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--muted);">No patrol members yet</td></tr>';
+        patrolTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--muted);">No data found</td></tr>';
         memberCount.textContent = '0 members';
         return;
       }
