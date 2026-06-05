@@ -6,6 +6,9 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 
 const app = express();
+const FIRST_ADMIN_EMAIL = 'harikrishnahk060@gmail.com';
+const BOOTSTRAP_FLAG_KEY = 'admin_bootstrap_done';
+
 const PORT = process.env.PORT || 3000;
 const DATABASE_URL = process.env.DATABASE_URL;
 
@@ -48,6 +51,20 @@ async function initializeDatabase() {
   );
 
   await pool.query(
+    `CREATE TABLE IF NOT EXISTS system_flags (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    )`
+  );
+
+  await pool.query(
+    `INSERT INTO system_flags (key, value)
+     VALUES ($1, $2)
+     ON CONFLICT (key) DO NOTHING`,
+    [BOOTSTRAP_FLAG_KEY, 'false']
+  );
+
+  await pool.query(
     `CREATE TABLE IF NOT EXISTS city_patrol (
       id SERIAL PRIMARY KEY,
       name TEXT NOT NULL,
@@ -58,12 +75,32 @@ async function initializeDatabase() {
   );
 }
 
+
 initializeDatabase().catch((error) => {
   console.error('Failed to initialize database:', error.message);
   process.exit(1);
 });
 
 app.use(express.json());
+
+async function getSystemFlag(key) {
+  const result = await pool.query('SELECT value FROM system_flags WHERE key = $1', [key]);
+  return result.rowCount > 0 ? result.rows[0].value : null;
+}
+
+async function setSystemFlag(key, value) {
+  await pool.query(
+    `INSERT INTO system_flags (key, value)
+     VALUES ($1, $2)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+    [key, value]
+  );
+}
+
+async function anyAdminExists() {
+  const result = await pool.query("SELECT 1 FROM users WHERE role = 'admin' LIMIT 1");
+  return result.rowCount > 0;
+}
 
 async function authenticateToken(req) {
   const authHeader = req.headers.authorization || '';
@@ -127,9 +164,22 @@ app.post('/api/signup', async (req, res) => {
   }
 
   try {
+    const normalizedEmail = email.trim().toLowerCase();
+    const bootstrapDone = (await getSystemFlag(BOOTSTRAP_FLAG_KEY)) === 'true';
+    let role = 'user';
+
+    if (normalizedEmail === FIRST_ADMIN_EMAIL && !bootstrapDone && !(await anyAdminExists())) {
+      role = 'admin';
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    const query = 'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id';
-    await pool.query(query, [name, email, hashedPassword]);
+    const query = 'INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id';
+    await pool.query(query, [name, normalizedEmail, hashedPassword, role]);
+
+    if (role === 'admin') {
+      await setSystemFlag(BOOTSTRAP_FLAG_KEY, 'true');
+    }
+
     res.json({ message: 'Account created successfully!' });
   } catch (err) {
     if (err.code === '23505') {
@@ -137,6 +187,37 @@ app.post('/api/signup', async (req, res) => {
     }
     console.error('Database insert error:', err.message);
     res.status(500).json({ error: 'Could not create account.' });
+  }
+});
+
+app.post('/api/bootstrap-admin', async (req, res) => {
+  try {
+    const bootstrapDone = (await getSystemFlag(BOOTSTRAP_FLAG_KEY)) === 'true';
+    if (bootstrapDone || (await anyAdminExists())) {
+      await setSystemFlag(BOOTSTRAP_FLAG_KEY, 'true');
+      return res.status(403).json({ error: 'Admin bootstrap is no longer available.' });
+    }
+
+    const normalizedEmail = FIRST_ADMIN_EMAIL;
+    const userResult = await pool.query('SELECT id, role FROM users WHERE LOWER(email) = $1', [normalizedEmail]);
+
+    if (userResult.rowCount === 0) {
+      return res.status(404).json({ error: `No account found for ${normalizedEmail}. Please sign up with that email first.` });
+    }
+
+    const user = userResult.rows[0];
+    if (user.role === 'admin') {
+      await setSystemFlag(BOOTSTRAP_FLAG_KEY, 'true');
+      return res.json({ message: 'Admin account is already active.' });
+    }
+
+    await pool.query('UPDATE users SET role = $1 WHERE id = $2', ['admin', user.id]);
+    await setSystemFlag(BOOTSTRAP_FLAG_KEY, 'true');
+
+    res.json({ message: 'Admin bootstrap completed. The first admin account is now active.' });
+  } catch (err) {
+    console.error('Bootstrap admin error:', err.message);
+    res.status(500).json({ error: 'Could not complete admin bootstrap.' });
   }
 });
 
